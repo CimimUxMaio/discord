@@ -31,6 +31,8 @@ library
       Discord.API.Internal.Types.Guild
       Discord.API.Internal.Types.User
       Discord.API.Types
+      Discord.Core.Bot
+      Discord.Core.EventLoop
   other-modules:
       Paths_discord
   hs-source-dirs:
