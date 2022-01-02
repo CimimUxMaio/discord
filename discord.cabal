@@ -32,6 +32,7 @@ library
       Discord.API.Internal.Types.User
       Discord.API.Types
       Discord.Core.Bot
+      Discord.Core.BotAction
       Discord.Core.EventLoop
       Discord.Core.Handlers
       Discord.Core.Internal.Types

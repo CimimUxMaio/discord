@@ -31,7 +31,7 @@ data BotConfig = BotConfig
 type BotActionEventParser_ = BotEventParser (BotAction ())
 
 newtype BotM a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotActionEventParser_]) a }
-    deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad, MonadReader BotConfig, MonadWriter [BotActionEventParser_])
 
 
 runBotM :: BotM a -> BotConfig -> [BotEventParser (BotAction ())]
@@ -39,7 +39,7 @@ runBotM m = snd . runWriter . runReaderT (_runBotM m)
 
 
 newtype BotAction a = BotAction { _runBotAction :: ReaderT BotConfig IO a }
-    deriving (Functor, Applicative, Monad, MonadIO)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader BotConfig)
 
 runBotAction :: BotConfig -> BotAction () -> IO ()
 runBotAction cfg action = runReaderT (_runBotAction action) cfg

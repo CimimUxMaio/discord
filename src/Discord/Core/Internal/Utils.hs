@@ -3,14 +3,12 @@ module Discord.Core.Internal.Utils where
 import Discord.Core.Internal.Types ( BotEventParser, BotAction, BotM (BotM) )
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Control.Monad.Trans.Writer (tell, WriterT (WriterT))
-import Control.Monad.Trans (lift)
-import Control.Monad.Identity (Identity)
+import Control.Monad.RWS (tell)
+
 
 
 addParser :: BotEventParser (BotAction ()) -> BotM ()
-addParser parser = do
-    BotM $ lift . tell $ [parser]
+addParser parser = tell [parser]
 
 
 textParser :: BotEventParser Text
