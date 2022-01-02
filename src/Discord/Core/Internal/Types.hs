@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 
 module Discord.Core.Internal.Types where
+
 import Control.Monad.Writer (Writer, MonadWriter (tell, writer), runWriter, WriterT)
-import Control.Monad.Reader (ReaderT (runReaderT), ask, MonadTrans (lift), MonadIO (liftIO), Reader, MonadReader (reader))
+import Control.Monad.Reader (ReaderT (runReaderT), ask, MonadTrans (lift), MonadIO (liftIO), Reader, MonadReader (reader), runReader)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Discord.API.Internal.Types.BotEvent (BotEvent)
@@ -14,11 +15,12 @@ import Data.Maybe (fromMaybe)
 
 data BotApp = BotApp
     { config :: BotConfig
-    , handler :: BotM }
+    , handler :: BotM () }
 
-botAppEventHandler :: BotApp -> BotEvent -> BotAction
+botAppEventHandler :: BotApp -> BotEvent -> BotAction ()
 botAppEventHandler app event =
     fromMaybe (pure ()) . ($ event) . runBotEventParser . asum $ runBotM (handler app) (config app)
+
 
 data BotConfig = BotConfig
     { prefix :: Text
@@ -26,16 +28,22 @@ data BotConfig = BotConfig
     } deriving (Show)
 
 
-type BotM = ReaderT BotConfig (Writer [BotEventParser BotAction]) ()
+type BotActionEventParser_ = BotEventParser (BotAction ())
 
-runBotM :: BotM -> BotConfig -> [BotEventParser BotAction]
-runBotM m = snd . runWriter . runReaderT m
+newtype BotM a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotActionEventParser_]) a }
+    deriving (Functor, Applicative, Monad)
 
 
-type BotAction = ReaderT BotConfig IO ()
+runBotM :: BotM a -> BotConfig -> [BotEventParser (BotAction ())]
+runBotM m = snd . runWriter . runReaderT (_runBotM m)
 
-runBotAction :: BotConfig -> BotAction -> IO ()
-runBotAction cfg action = runReaderT action cfg
+
+newtype BotAction a = BotAction { _runBotAction :: ReaderT BotConfig IO a }
+    deriving (Functor, Applicative, Monad, MonadIO)
+
+runBotAction :: BotConfig -> BotAction () -> IO ()
+runBotAction cfg action = runReaderT (_runBotAction action) cfg
+
 
 newtype BotEventParser a = BotEventParser
     { runBotEventParser :: BotEvent -> Maybe a }

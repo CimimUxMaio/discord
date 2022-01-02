@@ -17,7 +17,7 @@ app = BotApp
     , handler = customHandler }
     
 
-customHandler :: BotM
+customHandler :: BotM ()
 customHandler = do
     onCommand "help" $ \args -> do
         liftIO $ print "Hey, i need help"

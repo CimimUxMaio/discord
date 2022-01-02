@@ -16,16 +16,5 @@ import Discord.Core.Internal.Utils (commandParser, addParser, textParser)
 startBot :: BotApp -> IO ()
 startBot app = do
     eventQueue <- newChan
-    _eventLoop <- forkIO $ startEventLoop eventQueue
+    _eventLoop <- forkIO $ startEventLoop eventQueue app
     print "bot started"
-    botLoop eventQueue app
-
-
-
-botLoop :: Chan BotEvent -> BotApp -> IO ()
-botLoop eventQueue app = forever $ do
-    event <- readChan eventQueue
-    eventHandler event
-
-    where eventHandler = runBotAction cfg . botAppEventHandler app
-          cfg = config app
