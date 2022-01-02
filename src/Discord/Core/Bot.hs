@@ -2,35 +2,30 @@ module Discord.Core.Bot where
 import Data.Text (Text)
 import Control.Monad.Trans.Reader (ReaderT (runReaderT), ask)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Control.Monad.Reader (runReader)
-import Control.Concurrent (newChan, threadDelay, writeChan)
+import Control.Monad.Reader (runReader, MonadTrans (lift), MonadReader (reader), forever)
+import Control.Concurrent (newChan, threadDelay, writeChan, Chan, readChan)
 import Discord.Core.EventLoop (startEventLoop)
 import GHC.Conc (forkIO)
-import Control.Monad (forever)
 import Discord.API.Internal.Types.BotEvent (BotEvent(Resumed))
+import Discord.Core.Internal.Types (BotEventParser, BotAction, BotM, BotConfig (prefix), BotApp (config), botAppEventHandler, runBotAction)
+import Control.Monad.Trans.Writer (tell)
+import Discord.Core.Internal.Utils (commandParser, addParser, textParser)
 
 
 
-data BotConfig = BotConfig
-    { prefix :: Text
-    , token  :: Text
-    } deriving (Show)
-
-
-type BotM a = ReaderT BotConfig IO a
-
--- printConfig :: BotM ()
--- printConfig = do
---     config <- ask 
---     liftIO $ print config
---
--- runBot :: BotConfig -> IO ()
--- runBot = runReaderT $ do
---     printConfig
-
-
-startBot :: IO ()
-startBot = do
+startBot :: BotApp -> IO ()
+startBot app = do
     eventQueue <- newChan
-    eventLoop <- forkIO $ startEventLoop eventQueue
+    _eventLoop <- forkIO $ startEventLoop eventQueue
     print "bot started"
+    botLoop eventQueue app
+
+
+
+botLoop :: Chan BotEvent -> BotApp -> IO ()
+botLoop eventQueue app = forever $ do
+    event <- readChan eventQueue
+    eventHandler event
+
+    where eventHandler = runBotAction cfg . botAppEventHandler app
+          cfg = config app
