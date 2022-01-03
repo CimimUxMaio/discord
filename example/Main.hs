@@ -19,10 +19,10 @@ app = BotApp
 
 customHandler :: BotM ()
 customHandler = do
-    onCommand "help" $ \args -> do
+    onCommand "help" $ \(msg, args) -> do
         liftIO $ print "Hey, i need help"
 
-    onCommand "ping" $ \args -> do
+    onCommand "ping" $ \(msg, args) -> do
         liftIO $ print "Pong!"
 
 

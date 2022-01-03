@@ -1,9 +1,12 @@
+{-# LANGUAGE LambdaCase #-}
 module Discord.Core.Internal.Utils where
 
-import Discord.Core.Internal.Types ( BotEventParser, BotAction, BotM (BotM) )
+import Discord.Core.Internal.Types ( BotEventParser (BotEventParser), BotAction, BotM (BotM) )
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Control.Monad.RWS (tell)
+import Discord.API.Internal.Types.BotEvent (BotEvent(MessageCreate))
+import Discord.API.Internal.Types.Message (Message (messageText))
 
 
 
@@ -11,22 +14,25 @@ addParser :: BotEventParser (BotAction ()) -> BotM ()
 addParser parser = tell [parser]
 
 
-textParser :: BotEventParser Text
-textParser = undefined
+messageCreateParser :: BotEventParser Message
+messageCreateParser = BotEventParser $ \case
+        MessageCreate msg -> pure msg 
+        _ -> fail "not text message"
 
 
-plainTextParser :: Text -> BotEventParser Text
+plainTextParser :: Text -> BotEventParser Message
 plainTextParser commandsPrefix = do
-    txt <- textParser
-    if commandsPrefix `Text.isPrefixOf` txt
+    msg <- messageCreateParser
+    if commandsPrefix `Text.isPrefixOf` messageText msg
         then fail "this is a command"
-        else pure txt
+        else pure msg
 
 
-commandParser :: Text -> Text -> BotEventParser Text
+commandParser :: Text -> Text -> BotEventParser (Message, [Text])
 commandParser prefix' name = do
-    txt <- textParser
+    msg <- messageCreateParser
+    let txt = messageText msg
     case Text.words txt of
         (w:ws) | w == prefix' <> name
-            -> pure $ Text.unwords ws
+            -> pure (msg, ws)
         _   -> fail "not that command"

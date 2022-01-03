@@ -1,8 +1,9 @@
 module Discord.Core.Handlers where
 import Discord.Core.Internal.Types (BotAction, BotM (BotM), BotEventParser, BotConfig (prefix))
 import Data.Text (Text)
-import Discord.Core.Internal.Utils (addParser, textParser, commandParser)
+import Discord.Core.Internal.Utils (addParser, messageCreateParser, commandParser)
 import Control.Monad.Reader (MonadTrans(lift), MonadReader (reader))
+import Discord.API.Internal.Types.Message (Message)
 
 
 
@@ -10,11 +11,11 @@ import Control.Monad.Reader (MonadTrans(lift), MonadReader (reader))
 (#>) p f = addParser $ f <$> p
 
 
-onMessage :: (Text -> BotAction ()) -> BotM ()
-onMessage = (textParser #>)
+onMessage :: (Message -> BotAction ()) -> BotM ()
+onMessage = (messageCreateParser #>)
 
 
-onCommand :: Text -> (Text -> BotAction ()) -> BotM ()
+onCommand :: Text -> ((Message, [Text]) -> BotAction ()) -> BotM ()
 onCommand name f = do
     prefix' <- reader prefix
     commandParser prefix' name #> f

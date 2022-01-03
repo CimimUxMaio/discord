@@ -9,7 +9,6 @@ import GHC.Conc (forkIO)
 import Discord.API.Internal.Types.BotEvent (BotEvent(Resumed))
 import Discord.Core.Internal.Types (BotEventParser, BotAction, BotM, BotConfig (prefix), BotApp (config), botAppEventHandler, runBotAction)
 import Control.Monad.Trans.Writer (tell)
-import Discord.Core.Internal.Utils (commandParser, addParser, textParser)
 
 
 
