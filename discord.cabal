@@ -28,7 +28,9 @@ library
       Discord.API.Internal.Types.BotEvent
       Discord.API.Internal.Types.Channel
       Discord.API.Internal.Types.Common
+      Discord.API.Internal.Types.Embed
       Discord.API.Internal.Types.Guild
+      Discord.API.Internal.Types.Message
       Discord.API.Internal.Types.User
       Discord.API.Types
       Discord.Core.Bot
