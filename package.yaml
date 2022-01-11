@@ -32,6 +32,8 @@ dependencies:
 - text
 - aeson
 - time
+- data-default
+- scientific
 
 executables:
   example-exe:

@@ -9,7 +9,6 @@ import Discord.API.Internal.Types.BotEvent (BotEvent(MessageCreate))
 import Discord.API.Internal.Types.Message (Message (messageText))
 
 
-
 addParser :: BotEventParser (BotAction ()) -> BotM ()
 addParser parser = tell [parser]
 
@@ -17,7 +16,7 @@ addParser parser = tell [parser]
 messageCreateParser :: BotEventParser Message
 messageCreateParser = BotEventParser $ \case
         MessageCreate msg -> pure msg 
-        _ -> fail "not text message"
+        _                 -> fail "not text message"
 
 
 plainTextParser :: Text -> BotEventParser Message

@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Discord.API.Internal.Gateway
       Discord.API.Internal.Types.BotEvent
       Discord.API.Internal.Types.Channel
       Discord.API.Internal.Types.Common
@@ -49,7 +50,9 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , data-default
     , mtl
+    , scientific
     , text
     , time
     , transformers
@@ -69,8 +72,10 @@ executable example-exe
   build-depends:
       aeson
     , base >=4.7 && <5
+    , data-default
     , discord
     , mtl
+    , scientific
     , text
     , time
     , transformers
@@ -91,8 +96,10 @@ test-suite discord-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , data-default
     , discord
     , mtl
+    , scientific
     , text
     , time
     , transformers

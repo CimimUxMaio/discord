@@ -141,7 +141,8 @@ instance FromJSON BotEvent where
 
             "USER_UPDATE" -> UserUpdate <$> parseJSON payloadObject
 
-            other -> pure $ UnhandledEvent other
+            _ -> fail "unknown event"
+
 
 
 data ReactionInfo = ReactionInfo
