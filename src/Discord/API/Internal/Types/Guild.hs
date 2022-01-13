@@ -10,7 +10,11 @@ import Data.Time.Clock (UTCTime)
 
 
 newtype GuildUnavailable = 
-    GuildUnavailable Snowflake deriving (Show, Eq, Generic, FromJSON)
+    GuildUnavailable Snowflake deriving (Show, Eq)
+
+instance FromJSON GuildUnavailable where
+    parseJSON = withObject "GuildUnavailable" $ \o ->
+        GuildUnavailable <$> o .: "id"
 
 
 data Guild = Guild
@@ -94,7 +98,7 @@ data Role = Role
     , roleHoist         :: Bool            -- if this role is pinned in the user listing
     , roleIcon          :: Maybe ImageHash -- role icon hash
     , rolePosition      :: Integer         -- position of this role
-    , rolePermissions   :: Text            -- permission bit set
+    , rolePermissions   :: Integer         -- permission bit set
     , roleIsManaged     :: Bool            -- whether this role is managed by an integration
     , roleIsMentionable :: Bool            -- whether this role is mentionable
     } deriving (Show)

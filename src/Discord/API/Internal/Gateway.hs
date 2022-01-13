@@ -1,176 +1,214 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NumericUnderscores #-}
+
 module Discord.API.Internal.Gateway where
 
-import Data.Text (Text)
-import Data.Default (Default (def))
-import Discord.API.Internal.Types.BotEvent (BotEvent)
-import Data.Aeson (withObject, FromJSON (parseJSON), (.:), Value (Object, Number), ToJSON (toJSON), object, (.=))
-import Data.Aeson.Types (Parser)
-import System.Info (os)
-import Discord.API.Internal.Types.Common (Snowflake)
-import Data.Scientific (scientific)
+import Discord.API.Internal.Types.Gateway (GatewayReceivable (Hello, HeartbeatRequest, Dispatch, Reconnect, InvalidSession, HeartbeatACK), GatewaySendableInternal (Heartbeat, Identify, Resume), compileGatewayIntent, GatewayIntent)
+import Control.Monad.State (StateT(StateT, runStateT), forever, evalStateT, MonadIO (liftIO), MonadState (put, get), modify, gets, when)
+import Data.Text (Text, pack, unpack)
+import Network.HTTP.Req (runReq, defaultHttpConfig, req, GET (GET), jsonResponse, https, (/:), responseBody, NoReqBody (NoReqBody), HttpException)
+import Control.Exception (try, catch, handle)
+import Data.Bifunctor (first)
+import Wuss (runSecureClient)
+import Data.Aeson (decode, eitherDecode, encode)
+import Network.WebSockets (receiveData, ClientApp, sendTextData)
+import Network.WebSockets.Connection (Connection)
+import Control.Monad (void, (<=<))
+import GHC.Conc (forkIO, ThreadId, threadDelay, killThread)
+import Data.IORef (IORef, readIORef, modifyIORef, writeIORef, newIORef)
+import Data.Maybe (fromMaybe, fromJust)
+import Data.Functor ((<&>))
+import Data.Default (Default(def))
+import Control.Monad.Trans.Reader (ReaderT (runReaderT))
+import Control.Monad.RWS (MonadReader (ask), asks)
+import Discord.API.Internal.Types.BotEvent (BotEvent(Ready, Resumed))
+import Data.Time (UTCTime, getCurrentTime, diffUTCTime)
+import Protolude (print, Chan, writeChan)
+import Prelude hiding (print)
+import Discord.Core.Internal.Types (BotConfig(token))
+import GHC.Num (integerToInt)
+import Control.Monad.Extra (whenJust)
 
 
+data GatewayEnv = GatewayEnv
+    { gatewayToken      :: Text
+    , gatewayIntent     :: GatewayIntent
+    , gatewayEventQueue :: Chan BotEvent
+    }
 
-data GatewayIntent = GatewayIntent
-  { gatewayIntentGuilds                 :: Bool
-  , gatewayIntentMembers                :: Bool
-  , gatewayIntentBans                   :: Bool
-  , gatewayIntentEmojis                 :: Bool
-  , gatewayIntentIntegrations           :: Bool
-  , gatewayIntentWebhooks               :: Bool
-  , gatewayIntentInvites                :: Bool
-  , gatewayIntentVoiceStates            :: Bool
-  , gatewayIntentPrecenses              :: Bool
-  , gatewayIntentMessageChanges         :: Bool
-  , gatewayIntentMessageReactions       :: Bool
-  , gatewayIntentMessageTyping          :: Bool
-  , gatewayIntentDirectMessageChanges   :: Bool
-  , gatewayIntentDirectMessageReactions :: Bool
-  , gatewayIntentDirectMessageTyping    :: Bool
-  } deriving (Show, Eq)
-
-instance Default GatewayIntent where
-  def = GatewayIntent { gatewayIntentGuilds                 = True
-                      , gatewayIntentMembers                = False
-                      , gatewayIntentBans                   = True
-                      , gatewayIntentEmojis                 = True
-                      , gatewayIntentIntegrations           = True
-                      , gatewayIntentWebhooks               = True
-                      , gatewayIntentInvites                = True
-                      , gatewayIntentVoiceStates            = True
-                      , gatewayIntentPrecenses              = False
-                      , gatewayIntentMessageChanges         = True
-                      , gatewayIntentMessageReactions       = True
-                      , gatewayIntentMessageTyping          = True
-                      , gatewayIntentDirectMessageChanges   = True
-                      , gatewayIntentDirectMessageReactions = True
-                      , gatewayIntentDirectMessageTyping    = True
-                      }
+data GatewayState = GatewayState
+    { gatewayHeartbeatThread   :: Maybe ThreadId
+    , gatewayHealthCheckThread :: Maybe ThreadId
+    , gatewayLastSeq           :: IORef (Maybe Integer)
+    , gatewaySessionId         :: IORef (Maybe Text)
+    , gatewayLastHeartbeat     :: IORef UTCTime
+    }
 
 
-compileGatewayIntent :: GatewayIntent -> Integer
-compileGatewayIntent GatewayIntent{..} =
- sum $ [ if on then flag else 0
-       | (flag, on) <- [ (1, gatewayIntentGuilds)
-                       , (2 ^  1, gatewayIntentMembers)
-                       , (2 ^  2, gatewayIntentBans)
-                       , (2 ^  3, gatewayIntentEmojis)
-                       , (2 ^  4, gatewayIntentIntegrations)
-                       , (2 ^  5, gatewayIntentWebhooks)
-                       , (2 ^  6, gatewayIntentInvites)
-                       , (2 ^  7, gatewayIntentVoiceStates)
-                       , (2 ^  8, gatewayIntentPrecenses)
-                       , (2 ^  9, gatewayIntentMessageChanges)
-                       , (2 ^ 10, gatewayIntentMessageReactions)
-                       , (2 ^ 11, gatewayIntentMessageTyping)
-                       , (2 ^ 12, gatewayIntentDirectMessageChanges)
-                       , (2 ^ 13, gatewayIntentDirectMessageReactions)
-                       , (2 ^ 14, gatewayIntentDirectMessageTyping)
-                       ]
-       ]
+newtype GatewayM a =
+    GatewayM { _runGatewayM :: ReaderT GatewayEnv (StateT GatewayState IO) a }
+    deriving (Functor, Applicative, Monad, MonadReader GatewayEnv, MonadState GatewayState, MonadIO)
 
-gatewayPayload :: ToJSON a => Integer -> a -> Value
-gatewayPayload opcode data' = object [ "op" .= opcode
-                                     , "d"  .= data'
-                                     ]
+runGatewayM :: GatewayEnv -> GatewayState -> GatewayM a -> IO ()
+runGatewayM env state m = void . (`runStateT` state) . runReaderT (_runGatewayM m) $ env
 
 
-data GatewayReceivable = Dispatch         BotEvent
-                       | HeartbeatRequest
-                       | Reconnect
-                       | InvalidSession
-                       | Hello            Integer
-                       | HeartbeatACK
-                       deriving (Show)
+gatewayInitialState :: IO GatewayState
+gatewayInitialState = do 
+    lastSeqRef <- newIORef Nothing
+    time <- getCurrentTime
+    lastHeartbeatRef <- newIORef time
+    sessionIdRef <- newIORef Nothing
 
-instance FromJSON GatewayReceivable where
-    parseJSON = withObject "GatewayReceivable" $ \o -> do
-        let json = Object o
-        op <- o .: "op" :: Parser Integer
-        payload <- o .: "d"
-        case op of
-            0  -> Dispatch <$> parseJSON json
-            1  -> pure HeartbeatRequest 
-            7  -> pure Reconnect
-            9  -> pure InvalidSession
-            10 -> Hello <$> payload .: "heartbeat_interval"
-            11 -> pure HeartbeatACK
-            _  -> fail "unknown gateway receivable"
+    pure GatewayState
+        { gatewayHeartbeatThread   = Nothing
+        , gatewayHealthCheckThread = Nothing
+        , gatewayLastSeq           = lastSeqRef
+        , gatewaySessionId         = sessionIdRef
+        , gatewayLastHeartbeat     = lastHeartbeatRef
+        }
 
 
-data GatewaySendableInternal = Heartbeat Integer            -- Last sequence number 
-                             | Identify  Text Integer       -- Token, Intents
-                             | Resume    Text Text Integer  -- Token, Session ID, Last sequence number
-                             deriving (Show, Eq)
+startGateway :: Text -> GatewayIntent -> Chan BotEvent -> IO ()
+startGateway token intent eventQueue = do
+    let initialEnv = GatewayEnv { gatewayToken = token
+                                , gatewayIntent = intent
+                                , gatewayEventQueue = eventQueue
+                                }
 
-instance ToJSON GatewaySendableInternal where
-    toJSON (Heartbeat lastSeq) = gatewayPayload 1 lastSeq
-    
-    toJSON (Identify token intents) = 
-        gatewayPayload 2 $ object [ "token"      .= token
-                                  , "properties" .= object [ "$os"      .= os
-                                                           , "$browser" .= ("discord-hs" :: Text)
-                                                           , "$device"  .= ("discord-hs" :: Text) 
-                                                           ] 
-                                  , "intents"    .= intents
-                                  ]
-    
-    toJSON (Resume token sessionId lastSeq) =
-        gatewayPayload 6 $ object [ "token" .= token
-                                  , "session_id" .= sessionId
-                                  , "seq" .= lastSeq 
-                                  ]
+    initialState <- gatewayInitialState
+    runGatewayM initialEnv initialState gateway
 
 
-data ActivityType = Game
-                  | Streaming
-                  | Listening
-                  | Watching
-                  | Custom
-                  | Competing
-                  deriving (Show, Enum)
+gateway :: GatewayM ()
+gateway = do
+    cleanThreads
 
-instance ToJSON ActivityType where
-    toJSON = Number . (`scientific` 0) . toInteger . fromEnum
+    env <- ask
+    let token = gatewayToken env
 
+    state <- get
+    let sessionIdRef = gatewaySessionId state
+    let lastSeqRef = gatewayLastSeq state
+    let lastHeartbeatRef = gatewayLastHeartbeat state
 
-data Activity = Activity
-    { activityName :: Text
-    , activityType :: ActivityType
-    , activityUrl  :: Maybe Text 
-    } deriving (Show)
+    liftIO $ runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $ \conn -> do
+        tid <- startHealthCheckLoop token sessionIdRef lastHeartbeatRef lastSeqRef conn
+        let updatedState = state { gatewayHealthCheckThread = Just tid }
+        gatewayEventLoop env updatedState conn
 
-instance ToJSON Activity where
-    toJSON Activity{..} = object [ "name" .= activityName
-                                 , "type" .= activityType
-                                 , "url"  .= activityUrl 
-                                 ]
-
-
-data GatewaySendable = RequestGuildMembers Snowflake Text Integer                 -- Guild_id, Query, Limit
-                     | VoiceStateUpdate    Snowflake (Maybe Snowflake) Bool Bool  -- Guild id, channel_id, muted, deafened
-                     | PresenceUpdate      (Maybe Integer) [Activity] Text Bool   -- Since, Activities, Status, AFK
-                     deriving (Show)
+    where cleanThreads = do
+            hbTid <- gets gatewayHeartbeatThread
+            hcTid <- gets gatewayHealthCheckThread
+            liftIO $ whenJust hbTid killThread
+            liftIO $ whenJust hcTid killThread
 
 
-instance ToJSON GatewaySendable where
-    toJSON (RequestGuildMembers guildId' query limit) = 
-        gatewayPayload 8 $ object [ "guild_id" .= guildId'
-                                  , "query"    .= query
-                                  , "limit"    .= limit
-                                  ]
-    
-    toJSON (VoiceStateUpdate guildId' channelId' muted deafened) = 
-        gatewayPayload 4 $ object [ "guild_id"   .= guildId'
-                                  , "channel_id" .= channelId'
-                                  , "self_mute"  .= muted
-                                  , "self_deaf"  .= deafened
-                                  ]
-    
-    toJSON (PresenceUpdate since activities status afk) =
-        gatewayPayload 3 $ object [ "since"      .= since
-                                  , "activities" .= activities
-                                  , "status"     .= status
-                                  , "afk"        .= afk 
-                                  ]
+continueGateway :: Connection -> GatewayM ()
+continueGateway conn = do
+    env <- ask
+    currentState <- get
+    liftIO $ gatewayEventLoop env currentState conn
+
+
+gatewayEventLoop :: GatewayEnv -> GatewayState -> ClientApp ()
+gatewayEventLoop env state conn = runGatewayM env state $ do
+    e <- gatewayReceive conn
+    case e of
+        Left parseErrorMessage -> print parseErrorMessage >> continueGateway conn
+        Right event -> gatewayEventHandler conn event
+
+
+gatewayEventHandler :: Connection -> GatewayReceivable -> GatewayM ()
+gatewayEventHandler conn e = case e of
+    Hello interval    -> do
+        lastSeqRef <- gets gatewayLastSeq
+        tid <- liftIO $ startHeartbeatLoop lastSeqRef conn interval
+        modify (\s -> s { gatewayHeartbeatThread = Just tid })
+        token <- asks gatewayToken
+        print interval
+        liftIO $ sendIdentify token def conn
+        continueGateway conn
+
+    HeartbeatRequest  -> do
+        lastSeq <- getRef gatewayLastSeq
+        liftIO $ sendHeartbeat lastSeq conn
+        continueGateway conn
+
+    Reconnect         -> gateway
+
+    InvalidSession    -> do
+        liftIO $ threadDelay 3_000_000
+        token <- asks gatewayToken
+        intent <- asks gatewayIntent
+        liftIO $ sendIdentify token intent conn
+        continueGateway conn
+
+    HeartbeatACK      -> do
+        ref <- gets gatewayLastHeartbeat
+        time <- liftIO getCurrentTime
+        liftIO $ writeIORef ref time
+        print "gateway acknowledged heartbeat"
+        continueGateway conn
+
+    Dispatch botEvent -> do
+        case botEvent of
+            Ready version user guilds sessionId -> do
+                sessionIdRef <- gets gatewaySessionId
+                liftIO $ writeIORef sessionIdRef (Just sessionId)
+                print "gateway ready"
+
+            Resumed -> print "gateway successfully resumed connection"
+            _ -> do
+                eventChan <- asks gatewayEventQueue
+                liftIO $ writeChan eventChan botEvent
+
+        continueGateway conn
+          
+
+getRef :: (GatewayState -> IORef a) -> GatewayM a
+getRef getter = do
+    ref <- gets getter
+    liftIO $ readIORef ref
+
+
+gatewayReceive :: Connection -> GatewayM (Either Text GatewayReceivable)
+gatewayReceive conn = do
+    msg <- liftIO $ receiveData conn
+    pure (first pack $ eitherDecode msg :: Either Text GatewayReceivable)
+
+
+startHeartbeatLoop :: IORef (Maybe Integer) -> Connection -> Int -> IO ThreadId
+startHeartbeatLoop lastSeqRef conn interval = forkIO . forever $ do
+    lastSeq <- readIORef lastSeqRef
+    sendHeartbeat lastSeq conn
+    print "gateway heartbeat sent"
+    threadDelay (interval * 1000)
+
+
+sendHeartbeat :: Maybe Integer -> Connection -> IO ()
+sendHeartbeat lastSeq conn = do
+    sendTextData conn $ encode (Heartbeat lastSeq)
+
+
+sendIdentify :: Text -> GatewayIntent -> Connection -> IO ()
+sendIdentify token intent conn = do
+    sendTextData conn $ encode (Identify token (compileGatewayIntent intent))
+
+
+startHealthCheckLoop :: Text -> IORef (Maybe Text) -> IORef UTCTime -> IORef (Maybe Integer) -> Connection -> IO ThreadId
+startHealthCheckLoop token sessionIdRef lastHeartbeatRef lastSeqRef conn = forkIO . forever $ do
+    threadDelay 20_000_000
+
+    sessionId <- readIORef sessionIdRef
+    lastSeq <- readIORef lastSeqRef
+    lastHeartbeat <- readIORef lastHeartbeatRef
+    now <- getCurrentTime 
+
+    when (diffUTCTime now lastHeartbeat >= 60) $ do
+        print "gateway server timed out, attempting to reconnect..."
+        maybe 
+            (print "gateway could not resume connection") 
+            ((\_ -> print "gateway resume request sent") <=< sendTextData conn . encode) 
+            (Resume token <$> sessionId <*> lastSeq)
+
+    where sendResume resume = sendTextData conn $ encode resume

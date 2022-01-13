@@ -9,9 +9,9 @@ import Discord.Core.Internal.Types (BotApp(BotApp, config), runBotAction, botApp
 
 
 startEventLoop :: Chan BotEvent -> BotApp -> IO ()
-startEventLoop = forever . handleNext
+startEventLoop eventQueue app = forever $ do
+    event <- readChan eventQueue
+    eventHandler event
 
-handleNext :: Chan BotEvent -> BotApp -> IO ()
-handleNext eventQueue app = readChan eventQueue >>= eventHandler
     where eventHandler = runBotAction cfg . botAppEventHandler app
           cfg = config app

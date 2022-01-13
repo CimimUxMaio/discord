@@ -6,7 +6,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 
 
-newtype Snowflake = Snowflake Word64 deriving (Show, Eq, Generic, FromJSON, ToJSON)
+newtype Snowflake = Snowflake Text deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 newtype ImageHash = ImageHash Text deriving (Show, Eq, Generic, FromJSON)
 

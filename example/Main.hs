@@ -8,8 +8,8 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 
 customConfig :: BotConfig
 customConfig = BotConfig
-    { prefix = "+"
-    , token = "<your_token>" }
+    { prefix = "?"
+    , token = "OTMwODQxNzczMzI3MTU1MjAw.Yd7v9A.txbHnAX0h6d18M3jNbwFSFFiz5Q" }
 
 app :: BotApp
 app = BotApp

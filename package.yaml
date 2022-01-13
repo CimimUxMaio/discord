@@ -34,6 +34,11 @@ dependencies:
 - time
 - data-default
 - scientific
+- req
+- wuss
+- websockets
+- protolude
+- extra
 
 executables:
   example-exe:

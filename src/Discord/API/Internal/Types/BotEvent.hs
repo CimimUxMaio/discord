@@ -12,11 +12,7 @@ import Discord.API.Internal.Types.Message (Message)
 import Data.Aeson.Types ( (.:), withObject, FromJSON(parseJSON), Parser )
 
 
-type SessionID = Text
-
-newtype GatewayVersion = GatewayVersion Integer deriving (Show, Eq, Generic, FromJSON)
-
-data BotEvent = Ready                      GatewayVersion User [GuildUnavailable] SessionID
+data BotEvent = Ready                      Integer User [GuildUnavailable] Text
               | Resumed                    
               | ChannelCreate              Channel
               | ChannelUpdate              Channel
@@ -172,9 +168,9 @@ instance FromJSON PresenceInfo where
 
 
 data TypingInfo = TypingInfo
-    { typingUserId :: Snowflake
+    { typingUserId    :: Snowflake
     , typingChannelId :: Snowflake
-    , typingTimestamp :: UTCTime
+    , typingTimestamp :: Integer
     } deriving Show
 
 instance FromJSON TypingInfo where

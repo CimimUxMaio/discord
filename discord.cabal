@@ -30,10 +30,10 @@ library
       Discord.API.Internal.Types.Channel
       Discord.API.Internal.Types.Common
       Discord.API.Internal.Types.Embed
+      Discord.API.Internal.Types.Gateway
       Discord.API.Internal.Types.Guild
       Discord.API.Internal.Types.Message
       Discord.API.Internal.Types.User
-      Discord.API.Types
       Discord.Core.Bot
       Discord.Core.EventLoop
       Discord.Core.Handlers
@@ -51,11 +51,16 @@ library
       aeson
     , base >=4.7 && <5
     , data-default
+    , extra
     , mtl
+    , protolude
+    , req
     , scientific
     , text
     , time
     , transformers
+    , websockets
+    , wuss
   default-language: Haskell2010
 
 executable example-exe
@@ -74,11 +79,16 @@ executable example-exe
     , base >=4.7 && <5
     , data-default
     , discord
+    , extra
     , mtl
+    , protolude
+    , req
     , scientific
     , text
     , time
     , transformers
+    , websockets
+    , wuss
   default-language: Haskell2010
 
 test-suite discord-test
@@ -98,9 +108,14 @@ test-suite discord-test
     , base >=4.7 && <5
     , data-default
     , discord
+    , extra
     , mtl
+    , protolude
+    , req
     , scientific
     , text
     , time
     , transformers
+    , websockets
+    , wuss
   default-language: Haskell2010
