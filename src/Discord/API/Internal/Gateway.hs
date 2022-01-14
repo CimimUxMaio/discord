@@ -158,9 +158,10 @@ gatewayEventHandler conn e = case e of
                 attemptResume conn prevSessionId
 
             Resumed -> print "gateway successfully resumed connection"
-            _ -> do
-                eventChan <- asks gatewayEventQueue
-                liftIO $ writeChan eventChan botEvent
+            _ -> void-- do
+            
+        eventChan <- asks gatewayEventQueue
+        liftIO $ writeChan eventChan botEvent
 
         continueEventLoop conn
     
