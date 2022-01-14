@@ -87,13 +87,8 @@ instanceGateway env = forkIO . gateway env
 
 gateway :: GatewayEnv -> GatewayState -> IO ()
 gateway env state = do
-    finalState <- runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $ \conn -> do
-        sessionId <- readIORef . gatewaySessionId $ state
-        lastSeq <- readIORef . gatewayLastSeq $ state
-        let token = gatewayToken env
-
-        attemptResume conn token sessionId lastSeq
-        runGatewayM env state $ gatewayEventLoop conn
+    finalState <- runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $
+        runGatewayM env state . gatewayEventLoop
 
     cleanup finalState
     gateway env finalState
@@ -101,12 +96,6 @@ gateway env state = do
     where cleanup state = do
               let tid = gatewayHeartbeatThread state
               liftIO $ whenJust tid killThread
-
-          attemptResume conn token sessionId lastSeq = 
-              whenJust sessionId (whenJust lastSeq . sendResume conn token)
-
-          sendResume conn token sessionId lastSeq = do
-              sendTextData conn . encode $ Resume token sessionId lastSeq
 
 
 continueEventLoop :: Connection -> GatewayM ()
@@ -162,9 +151,11 @@ gatewayEventHandler conn e = case e of
     Dispatch botEvent -> do
         case botEvent of
             Ready version user guilds sessionId -> do
-                sessionIdRef <- gets gatewaySessionId
-                liftIO $ writeIORef sessionIdRef (Just sessionId)
                 print "gateway ready"
+                sessionIdRef <- gets gatewaySessionId
+                prevSessionId <- liftIO $ readIORef sessionIdRef
+                liftIO $ writeIORef sessionIdRef (Just sessionId)
+                attemptResume conn prevSessionId
 
             Resumed -> print "gateway successfully resumed connection"
             _ -> do
@@ -174,6 +165,14 @@ gatewayEventHandler conn e = case e of
         continueEventLoop conn
     
     where exitEventLoop = pure ()
+
+          attemptResume conn prevSessionId = do
+              token <- asks gatewayToken
+              lastSeq <- getRef gatewayLastSeq
+              whenJust prevSessionId (whenJust lastSeq . sendResume conn token)
+          
+          sendResume conn token sessionId lastSeq =
+              liftIO . sendTextData conn . encode . Resume token sessionId $ lastSeq
           
 
 getRef :: (GatewayState -> IORef a) -> GatewayM a
