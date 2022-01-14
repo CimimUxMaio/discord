@@ -76,7 +76,7 @@ gatewayPayload opcode data' = object [ "op" .= opcode
                                      ]
 
 
-data GatewayReceivable = Dispatch         BotEvent
+data GatewayReceivable = Dispatch         BotEvent (Maybe Integer)
                        | HeartbeatRequest
                        | Reconnect
                        | InvalidSession
@@ -90,6 +90,7 @@ instance FromJSON GatewayReceivable where
         op <- o .: "op" :: Parser Integer
         case op of
             0  -> Dispatch <$> parseJSON json
+                           <*> o .:? "s"
             1  -> pure HeartbeatRequest 
             7  -> pure Reconnect
             9  -> pure InvalidSession

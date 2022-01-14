@@ -128,7 +128,7 @@ gatewayEventHandler conn e = case e of
         continueEventLoop conn
 
     HeartbeatRequest  -> do
-        lastSeq <- getRef gatewayLastSeq
+        lastSeq <- readGatewayRef gatewayLastSeq
         liftIO $ sendHeartbeat lastSeq conn
         continueEventLoop conn
 
@@ -148,17 +148,22 @@ gatewayEventHandler conn e = case e of
         print "gateway acknowledged heartbeat"
         continueEventLoop conn
 
-    Dispatch botEvent -> do
+    Dispatch botEvent seqNum -> do
         case botEvent of
             Ready version user guilds sessionId -> do
                 print "gateway ready"
+
                 sessionIdRef <- gets gatewaySessionId
                 prevSessionId <- liftIO $ readIORef sessionIdRef
+
                 liftIO $ writeIORef sessionIdRef (Just sessionId)
                 attemptResume conn prevSessionId
 
             Resumed -> print "gateway successfully resumed connection"
-            _ -> void-- do
+            _ -> pure ()
+
+        lastSeqRef <- gets gatewayLastSeq
+        liftIO $ writeIORef lastSeqRef seqNum
             
         eventChan <- asks gatewayEventQueue
         liftIO $ writeChan eventChan botEvent
@@ -169,15 +174,16 @@ gatewayEventHandler conn e = case e of
 
           attemptResume conn prevSessionId = do
               token <- asks gatewayToken
-              lastSeq <- getRef gatewayLastSeq
+              lastSeq <- readGatewayRef gatewayLastSeq
               whenJust prevSessionId (whenJust lastSeq . sendResume conn token)
           
-          sendResume conn token sessionId lastSeq =
+          sendResume conn token sessionId lastSeq = do
+              print "attempting to resume"
               liftIO . sendTextData conn . encode . Resume token sessionId $ lastSeq
           
 
-getRef :: (GatewayState -> IORef a) -> GatewayM a
-getRef getter = do
+readGatewayRef :: (GatewayState -> IORef a) -> GatewayM a
+readGatewayRef getter = do
     ref <- gets getter
     liftIO $ readIORef ref
 
@@ -210,9 +216,9 @@ startHealthCheckLoop :: IORef ThreadId -> GatewayM ()
 startHealthCheckLoop gatewayTidRef = forever $ do
     liftIO $ threadDelay 20_000_000
 
-    sessionId <- getRef gatewaySessionId
-    lastSeq <- getRef gatewayLastSeq
-    lastHeartbeat <- getRef gatewayLastHeartbeat
+    sessionId <- readGatewayRef gatewaySessionId
+    lastSeq <- readGatewayRef gatewayLastSeq
+    lastHeartbeat <- readGatewayRef gatewayLastHeartbeat
 
     now <- liftIO getCurrentTime 
 
