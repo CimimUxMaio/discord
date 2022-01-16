@@ -2,16 +2,15 @@
 
 module Discord.API.Internal.Gateway where
 
-import Discord.API.Internal.Types.Gateway (GatewayReceivable (Hello, HeartbeatRequest, Dispatch, Reconnect, InvalidSession, HeartbeatACK), GatewaySendableInternal (Heartbeat, Identify, Resume), compileGatewayIntent, GatewayIntent)
+import Discord.API.Internal.Types.Gateway (GatewayReceivable (Hello, HeartbeatRequest, Dispatch, Reconnect, InvalidSession, HeartbeatACK), GatewaySendableInternal (Heartbeat, Identify, Resume), compileGatewayIntent, GatewayIntent (GatewayIntent))
 import Control.Monad.State (StateT(StateT, runStateT), forever, evalStateT, MonadIO (liftIO), MonadState (put, get), modify, gets)
 import Data.Text (Text, pack, unpack)
 import Network.HTTP.Req (runReq, defaultHttpConfig, req, GET (GET), jsonResponse, https, (/:), responseBody, NoReqBody (NoReqBody), HttpException)
-import Control.Exception (try, catch, handle)
 import Data.Bifunctor (first)
 import Wuss (runSecureClient)
 import Data.Aeson (decode, eitherDecode, encode)
 import Network.WebSockets (receiveData, ClientApp, sendTextData)
-import Network.WebSockets.Connection (Connection)
+import Network.WebSockets.Connection (Connection, sendClose)
 import Control.Monad (void, (<=<))
 import GHC.Conc (forkIO, ThreadId, threadDelay, killThread)
 import Data.IORef (IORef, readIORef, modifyIORef, writeIORef, newIORef)
@@ -22,10 +21,11 @@ import Control.Monad.Trans.Reader (ReaderT (runReaderT))
 import Control.Monad.RWS (MonadReader (ask), asks)
 import Discord.API.Internal.Types.BotEvent (BotEvent(Ready, Resumed))
 import Data.Time (UTCTime, getCurrentTime, diffUTCTime)
-import Protolude (print, Chan, writeChan, when, finally)
+import Protolude (print, Chan, writeChan, when, finally, SomeException (SomeException))
 import Prelude hiding (print)
 import Discord.Core.Internal.Types (BotConfig(token))
 import Control.Monad.Extra (whenJust)
+import Control.Exception (try)
 
 
 data GatewayEnv = GatewayEnv
@@ -87,11 +87,14 @@ instanceGateway env = forkIO . gateway env
 
 gateway :: GatewayEnv -> GatewayState -> IO ()
 gateway env state = do
-    finalState <- runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $
-        runGatewayM env state . gatewayEventLoop
+    r <- try $ do
+        finalState <- runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $
+            runGatewayM env state . gatewayEventLoop
 
-    cleanup finalState
-    gateway env finalState
+        cleanup finalState
+        gateway env finalState
+
+    print (r :: Either SomeException ()) 
 
     where cleanup state = do
               let tid = gatewayHeartbeatThread state
@@ -104,6 +107,7 @@ continueEventLoop = gatewayEventLoop
 
 cleanupGateway :: GatewayM ()
 cleanupGateway = do
+    print "cleaning up gateway"
     tid <- gets gatewayHeartbeatThread
     liftIO $ whenJust tid killThread
 
@@ -123,8 +127,12 @@ gatewayEventHandler conn e = case e of
         tid <- liftIO $ startHeartbeatLoop lastSeqRef conn interval
         modify (\s -> s { gatewayHeartbeatThread = Just tid })
         token <- asks gatewayToken
-        print interval
-        liftIO $ sendIdentify token def conn
+
+        sessionId <- readGatewayRef gatewaySessionId
+        case sessionId of
+            Just sid -> attemptResume conn sid
+            Nothing -> identify conn
+
         continueEventLoop conn
 
     HeartbeatRequest  -> do
@@ -136,9 +144,7 @@ gatewayEventHandler conn e = case e of
 
     InvalidSession    -> do
         liftIO $ threadDelay 3_000_000
-        token <- asks gatewayToken
-        intent <- asks gatewayIntent
-        liftIO $ sendIdentify token intent conn
+        identify conn
         continueEventLoop conn
 
     HeartbeatACK      -> do
@@ -152,14 +158,11 @@ gatewayEventHandler conn e = case e of
         case botEvent of
             Ready version user guilds sessionId -> do
                 print "gateway ready"
-
                 sessionIdRef <- gets gatewaySessionId
-                prevSessionId <- liftIO $ readIORef sessionIdRef
-
                 liftIO $ writeIORef sessionIdRef (Just sessionId)
-                attemptResume conn prevSessionId
 
             Resumed -> print "gateway successfully resumed connection"
+
             _ -> pure ()
 
         lastSeqRef <- gets gatewayLastSeq
@@ -172,14 +175,24 @@ gatewayEventHandler conn e = case e of
     
     where exitEventLoop = pure ()
 
+          identify :: Connection -> GatewayM ()
+          identify conn = do
+              token <- asks gatewayToken
+              intent <- asks gatewayIntent
+              liftIO . sendGateway conn $ Identify token (compileGatewayIntent intent)
+
           attemptResume conn prevSessionId = do
               token <- asks gatewayToken
               lastSeq <- readGatewayRef gatewayLastSeq
-              whenJust prevSessionId (whenJust lastSeq . sendResume conn token)
+              case lastSeq of
+                  Nothing   -> identify conn
+                  Just lseq -> resume conn prevSessionId lseq
           
-          sendResume conn token sessionId lastSeq = do
+          resume :: Connection -> Text -> Integer -> GatewayM ()
+          resume conn sessionId lastSeq = do
               print "attempting to resume"
-              liftIO . sendTextData conn . encode . Resume token sessionId $ lastSeq
+              token <- asks gatewayToken
+              liftIO . sendGateway conn $ Resume token sessionId lastSeq
           
 
 readGatewayRef :: (GatewayState -> IORef a) -> GatewayM a
@@ -207,9 +220,8 @@ sendHeartbeat lastSeq conn = do
     sendTextData conn $ encode (Heartbeat lastSeq)
 
 
-sendIdentify :: Text -> GatewayIntent -> Connection -> IO ()
-sendIdentify token intent conn = do
-    sendTextData conn $ encode (Identify token (compileGatewayIntent intent))
+sendGateway :: Connection -> GatewaySendableInternal -> IO ()
+sendGateway conn = sendTextData conn . encode
 
 
 startHealthCheckLoop :: IORef ThreadId -> GatewayM ()
@@ -230,5 +242,5 @@ startHealthCheckLoop gatewayTidRef = forever $ do
 
         env <- ask
         state <- get
-        newGatewayTid <- liftIO . forkIO $ gateway env state
+        newGatewayTid <- liftIO $ instanceGateway env state
         liftIO $ writeIORef gatewayTidRef newGatewayTid
