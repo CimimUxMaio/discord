@@ -87,14 +87,11 @@ instanceGateway env = forkIO . gateway env
 
 gateway :: GatewayEnv -> GatewayState -> IO ()
 gateway env state = do
-    r <- try $ do
-        finalState <- runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $
-            runGatewayM env state . gatewayEventLoop
+    finalState <- runSecureClient "gateway.discord.gg" 443 "/?v=6&encoding=json" $
+        runGatewayM env state . gatewayEventLoop
 
-        cleanup finalState
-        gateway env finalState
-
-    print (r :: Either SomeException ()) 
+    cleanup finalState
+    gateway env finalState
 
     where cleanup state = do
               let tid = gatewayHeartbeatThread state
