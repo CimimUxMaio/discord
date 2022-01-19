@@ -39,6 +39,7 @@ dependencies:
 - websockets
 - protolude
 - extra
+- http-api-data
 
 executables:
   example-exe:

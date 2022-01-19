@@ -26,6 +26,9 @@ source-repository head
 library
   exposed-modules:
       Discord.API.Internal.Gateway
+      Discord.API.Internal.Http.Channel
+      Discord.API.Internal.Http.Common
+      Discord.API.Internal.Http.Types
       Discord.API.Internal.Types.BotEvent
       Discord.API.Internal.Types.Channel
       Discord.API.Internal.Types.Common
@@ -52,6 +55,7 @@ library
     , base >=4.7 && <5
     , data-default
     , extra
+    , http-api-data
     , mtl
     , protolude
     , req
@@ -80,6 +84,7 @@ executable example-exe
     , data-default
     , discord
     , extra
+    , http-api-data
     , mtl
     , protolude
     , req
@@ -109,6 +114,7 @@ test-suite discord-test
     , data-default
     , discord
     , extra
+    , http-api-data
     , mtl
     , protolude
     , req

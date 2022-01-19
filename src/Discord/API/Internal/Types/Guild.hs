@@ -1,12 +1,14 @@
+{-# LANGUAGE RecordWildCards #-}
 module Discord.API.Internal.Types.Guild where
 
 import Discord.API.Internal.Types.Common ( ImageHash, Snowflake(..) )
 import Data.Text (Text)
 import Discord.API.Internal.Types.User (User (userId))
 import Data.Function (on)
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?), (.!=))
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:), (.:?), (.!=), object, ToJSON (toJSON), (.=))
 import GHC.Generics (Generic)
 import Data.Time.Clock (UTCTime)
+import Data.Aeson.Types (ToJSON)
 
 
 newtype GuildUnavailable = 

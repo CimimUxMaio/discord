@@ -1,13 +1,15 @@
+{-# LANGUAGE RecordWildCards #-}
 module Discord.API.Internal.Types.Message where
 import Discord.API.Internal.Types.Common (Snowflake)
 import Discord.API.Internal.Types.User (User)
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import Data.Aeson (FromJSON, withObject, (.:), (.:?), (.!=))
+import Data.Aeson (FromJSON, withObject, (.:), (.:?), (.!=), ToJSON (toJSON), object, (.=))
 import Data.Aeson.Types (FromJSON(parseJSON))
 import Data.Function (on)
 import Discord.API.Internal.Types.Guild (Emoji)
 import Discord.API.Internal.Types.Embed (Embed)
+import Data.Aeson (ToJSON)
 
 
 data Message = Message
@@ -75,6 +77,18 @@ instance FromJSON Attachment where
                    <*> o .:? "height"
                    <*> o .:? "width"
                    <*> o .:? "content_type"
+
+instance ToJSON Attachment where
+    toJSON Attachment{..} = 
+        object [ "id"           .= attachmentId
+               , "filename"     .= attachmentFilename
+               , "size"         .= attachmentSize
+               , "url"          .= attachmentUrl
+               , "proxy_url"    .= attachmentProxyUrl
+               , "height"       .= attachmentHeight
+               , "width"        .= attachmentWidth
+               , "content_type" .= attachmentType
+               ]
 
 
 data Reaction = Reaction 

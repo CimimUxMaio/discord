@@ -1,8 +1,9 @@
+{-# LANGUAGE RecordWildCards #-}
 module Discord.API.Internal.Types.User where
 
 import Discord.API.Internal.Types.Common (Snowflake, ImageHash)
 import Data.Text (Text)
-import Data.Aeson (FromJSON, withObject, (.:), (.:?), (.!=))
+import Data.Aeson (FromJSON, withObject, (.:), (.:?), (.!=), ToJSON (toJSON), object, (.=))
 import Data.Aeson.Types (FromJSON(parseJSON))
 import Data.Function (on)
 
