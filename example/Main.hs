@@ -6,8 +6,8 @@ import Discord.Core.Handlers (onCommand)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Discord.API.Internal.Types.Message (Message(messageChannelId))
 import Discord.API.Internal.Http.Channel (sendMessage)
-import Discord.API.Internal.Http.Types (Sendable(Sendable))
 import Control.Monad.Reader (asks)
+import Discord.Core.Comms (sendText)
 
 
 customConfig :: BotConfig
@@ -30,8 +30,7 @@ customHandler = do
 
     onCommand "ping" $ \(msg, args) -> do
         let chid = messageChannelId msg
-        token <- asks token
-        liftIO $ sendMessage chid (Sendable "Pong!" [] []) token
+        sendText chid "Pong!"
         liftIO $ print "Pong!"
 
 

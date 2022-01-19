@@ -6,17 +6,17 @@ import Discord.API.Internal.Types.Common (Snowflake)
 import Data.Aeson (ToJSON (toJSON), object, (.=))
 
 
-data Sendable = 
-    Sendable
-        { sendableText       :: Text
-        , sendableEmbeds     :: [Embed]
-        , sendableStickerIds :: [Snowflake]
-        }
-    deriving Show
+data SendableMessage = SendableText     Text
+                     | SendableEmbeds   [Embed]
+                     | SendableStickers [Snowflake]
+                     deriving Show
 
-instance ToJSON Sendable where
-    toJSON Sendable{..} = 
-        object [ "content"     .= sendableText
-               , "embeds"      .= sendableEmbeds
-               , "sticker_ids" .= sendableStickerIds
-               ]
+instance ToJSON SendableMessage where
+    toJSON (SendableText txt) = 
+        object [ "content" .= txt ]
+    
+    toJSON (SendableEmbeds embeds) =
+        object [ "embeds" .= embeds ]
+
+    toJSON (SendableStickers stickerIds) = 
+        object [ "sticker_ids" .= stickerIds ]

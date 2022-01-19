@@ -4,7 +4,7 @@ import Discord.API.Internal.Types.Channel (Channel)
 import Discord.API.Internal.Http.Common (getApi, patchApi, deleteApi, (/+), (=:?), postApi, AuthorizedRequest)
 import Discord.API.Internal.Types.Message ( Message )
 import Network.HTTP.Req ((=:))
-import Discord.API.Internal.Http.Types (Sendable (Sendable))
+import Discord.API.Internal.Http.Types (SendableMessage)
 import Data.Text (Text)
 
 
@@ -40,6 +40,6 @@ deleteChannel (Snowflake chid) token = deleteApi token ("channels" /+ chid)
 
 {- POSTs -}
 
-sendMessage :: Snowflake -> Sendable -> AuthorizedRequest Message
+sendMessage :: Snowflake -> SendableMessage -> AuthorizedRequest Message
 sendMessage (Snowflake chid) = 
     postApi ("channels" /+ chid /+ "messages")
