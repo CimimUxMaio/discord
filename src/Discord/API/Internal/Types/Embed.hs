@@ -104,14 +104,14 @@ instance ToJSON EmbedThumbnail where
 data EmbedField = EmbedField
     { embedFieldName     :: Text        -- name of the field
     , embedFieldValue    :: Text        -- value of the field
-    , embedFieldIsInline :: Maybe Bool  -- whether or not this field should display inline
+    , embedFieldIsInline :: Bool  -- whether or not this field should display inline
     } deriving Show
 
 instance FromJSON EmbedField where
     parseJSON = withObject "EmbedFiled" $ \o ->
         EmbedField <$> o .:  "name"
                    <*> o .:  "value"
-                   <*> o .:? "inline"
+                   <*> o .:? "inline" .!= False
 
 instance ToJSON EmbedField where
     toJSON EmbedField{..} =

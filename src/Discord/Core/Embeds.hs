@@ -42,9 +42,13 @@ title t = modify (\emb -> emb { embedTitle = Just t })
 url :: Text -> EmbedBuilderM ()
 url u = modify (\emb -> emb { embedTitle = Just u })
 
-thumbnail :: Text -> EmbedThumbnailBuilderM () -> EmbedBuilderM ()
-thumbnail url thumbnailBuilder = modify (\emb -> emb { embedThumbnail = Just newThumbnail })
-    where newThumbnail = runEmbedThumbnailBuilder url thumbnailBuilder
+thumbnail :: Text -> EmbedBuilderM ()
+thumbnail url = modify (\emb -> emb { embedThumbnail = Just newThumbnail })
+    where newThumbnail = EmbedThumbnail { embedThumbnailUrl      = url
+                                        , embedThumbnailProxyUrl = Nothing
+                                        , embedThumbnailHeight   = Nothing
+                                        , embedThumbnailWidth    = Nothing 
+                                        } 
 
 description :: Text -> EmbedBuilderM ()
 description desc = modify (\emb -> emb { embedDescription = Just desc })
@@ -52,9 +56,13 @@ description desc = modify (\emb -> emb { embedDescription = Just desc })
 fields :: [EmbedField] -> EmbedBuilderM ()
 fields fs = modify (\emb -> emb { embedFields = fs })
 
-image :: Text -> EmbedImageBuilderM () -> EmbedBuilderM ()
-image url imageBuilder = modify (\emb -> emb { embedImage = Just newImage })
-    where newImage = runEmbedImageBuilder url imageBuilder
+image :: Text -> EmbedBuilderM ()
+image url = modify (\emb -> emb { embedImage = Just newImage })
+    where newImage = EmbedImage { embedImageUrl      = url
+                                , embedImageProxyUrl = Nothing
+                                , embedImageHeight   = Nothing
+                                , embedImageWidth    = Nothing
+                                }
 
 footer :: Text -> EmbedFooterBuilderM () -> EmbedBuilderM ()
 footer txt footerBuilder = modify (\emb -> emb { embedFooter = Just newFooter })
@@ -66,15 +74,17 @@ color c = modify (\emb -> emb { embedColor = Just c })
 timestamp :: UTCTime -> EmbedBuilderM ()
 timestamp t = modify (\emb -> emb { embedTimestamp = Just t })
 
-video :: Text -> EmbedVideoBuilderM () -> EmbedBuilderM ()
-video url videoBuilder = modify (\emb -> emb { embedVideo = Just newVideo })
-    where newVideo = runEmbedVideoBuilder url videoBuilder
+{- Unsupported -}
 
-provider :: Text -> Text -> EmbedBuilderM ()
-provider name url = modify (\emb -> emb { embedProvider = Just newProvider })
-    where newProvider = EmbedProvider { embedProviderName = Just name
-                                      , embedProviderUrl  = Just url
-                                      }
+-- video :: Text -> EmbedVideoBuilderM () -> EmbedBuilderM ()
+-- video url videoBuilder = modify (\emb -> emb { embedVideo = Just newVideo })
+--     where newVideo = runEmbedVideoBuilder url videoBuilder
+-- 
+-- provider :: Text -> Text -> EmbedBuilderM ()
+-- provider name url = modify (\emb -> emb { embedProvider = Just newProvider })
+--     where newProvider = EmbedProvider { embedProviderName = Just name
+--                                       , embedProviderUrl  = Just url
+--                                       }
 
 
 
@@ -101,52 +111,54 @@ authorProxyIconUrl :: Text -> EmbedAuthorBuilderM ()
 authorProxyIconUrl u = modify (\a -> a { embedAuthorProxyIconUrl = Just u })
 
 
+{- Values other than url are unsupported for thumbnails -}
 
-emptyThumbnail :: Text -> EmbedThumbnail
-emptyThumbnail url = EmbedThumbnail { embedThumbnailUrl      = url
-                                    , embedThumbnailProxyUrl = Nothing
-                                    , embedThumbnailHeight   = Nothing
-                                    , embedThumbnailWidth    = Nothing
-                                    }
+-- emptyThumbnail :: Text -> EmbedThumbnail
+-- emptyThumbnail url = EmbedThumbnail { embedThumbnailUrl      = url
+--                                     , embedThumbnailProxyUrl = Nothing
+--                                     , embedThumbnailHeight   = Nothing
+--                                     , embedThumbnailWidth    = Nothing
+--                                     }
+-- 
+-- newtype EmbedThumbnailBuilderM a = EmbedThumbnailBuilderM { _runEmbedThumbnailBuilder :: State EmbedThumbnail a }
+--     deriving (Functor, Applicative, Monad, MonadState EmbedThumbnail)
+-- 
+-- runEmbedThumbnailBuilder :: Text -> EmbedThumbnailBuilderM () -> EmbedThumbnail
+-- runEmbedThumbnailBuilder u = snd . (`runState` emptyThumbnail u) . _runEmbedThumbnailBuilder
+-- 
+-- thumbnailProxyUrl :: Text -> EmbedThumbnailBuilderM ()
+-- thumbnailProxyUrl url = modify (\thumb -> thumb { embedThumbnailProxyUrl = Just url })
+-- 
+-- thumbnailHeight :: Integer -> EmbedThumbnailBuilderM ()
+-- thumbnailHeight height = modify (\thumb -> thumb { embedThumbnailHeight = Just height })
+-- 
+-- thumbnailWidth :: Integer -> EmbedThumbnailBuilderM ()
+-- thumbnailWidth width = modify (\thumb -> thumb { embedThumbnailWidth = Just width })
 
-newtype EmbedThumbnailBuilderM a = EmbedThumbnailBuilderM { _runEmbedThumbnailBuilder :: State EmbedThumbnail a }
-    deriving (Functor, Applicative, Monad, MonadState EmbedThumbnail)
 
-runEmbedThumbnailBuilder :: Text -> EmbedThumbnailBuilderM () -> EmbedThumbnail
-runEmbedThumbnailBuilder u = snd . (`runState` emptyThumbnail u) . _runEmbedThumbnailBuilder
+{- Values other than url are unsupported for images -}
 
-thumbnailProxyUrl :: Text -> EmbedThumbnailBuilderM ()
-thumbnailProxyUrl url = modify (\thumb -> thumb { embedThumbnailProxyUrl = Just url })
-
-thumbnailHeight :: Integer -> EmbedThumbnailBuilderM ()
-thumbnailHeight height = modify (\thumb -> thumb { embedThumbnailHeight = Just height })
-
-thumbnailWidth :: Integer -> EmbedThumbnailBuilderM ()
-thumbnailWidth width = modify (\thumb -> thumb { embedThumbnailWidth = Just width })
-
-
-
-emptyImage :: Text -> EmbedImage
-emptyImage url = EmbedImage { embedImageUrl      = url
-                            , embedImageProxyUrl = Nothing
-                            , embedImageHeight   = Nothing
-                            , embedImageWidth    = Nothing
-                            }
-
-newtype EmbedImageBuilderM a = EmbedImageBuilderM { _runEmbedImageBuilder :: State EmbedImage a }
-    deriving (Functor, Applicative, Monad, MonadState EmbedImage)
-
-runEmbedImageBuilder :: Text -> EmbedImageBuilderM () -> EmbedImage
-runEmbedImageBuilder u = snd . (`runState` emptyImage u) . _runEmbedImageBuilder
-
-imageProxyUrl :: Text -> EmbedImageBuilderM ()
-imageProxyUrl url = modify (\img -> img { embedImageProxyUrl = Just url })
-
-imageHeight :: Integer -> EmbedImageBuilderM ()
-imageHeight height = modify (\img -> img { embedImageHeight = Just height })
-
-imageWidth :: Integer -> EmbedImageBuilderM ()
-imageWidth width = modify (\img -> img { embedImageWidth = Just width })
+-- emptyImage :: Text -> EmbedImage
+-- emptyImage url = EmbedImage { embedImageUrl      = url
+--                             , embedImageProxyUrl = Nothing
+--                             , embedImageHeight   = Nothing
+--                             , embedImageWidth    = Nothing
+--                             }
+-- 
+-- newtype EmbedImageBuilderM a = EmbedImageBuilderM { _runEmbedImageBuilder :: State EmbedImage a }
+--     deriving (Functor, Applicative, Monad, MonadState EmbedImage)
+-- 
+-- runEmbedImageBuilder :: Text -> EmbedImageBuilderM () -> EmbedImage
+-- runEmbedImageBuilder u = snd . (`runState` emptyImage u) . _runEmbedImageBuilder
+-- 
+-- imageProxyUrl :: Text -> EmbedImageBuilderM ()
+-- imageProxyUrl url = modify (\img -> img { embedImageProxyUrl = Just url })
+-- 
+-- imageHeight :: Integer -> EmbedImageBuilderM ()
+-- imageHeight height = modify (\img -> img { embedImageHeight = Just height })
+-- 
+-- imageWidth :: Integer -> EmbedImageBuilderM ()
+-- imageWidth width = modify (\img -> img { embedImageWidth = Just width })
 
 
 
@@ -170,25 +182,27 @@ footerProxyUrl url = modify (\f -> f { embedFooterProxyIconUrl = Just url })
 
 
 
-emptyVideo :: Text -> EmbedVideo
-emptyVideo url = EmbedVideo { embedVideoUrl = Just url
-                            , embedVideoProxyUrl = Nothing
-                            , embedVideoHeight   = Nothing
-                            , embedVideoWidth    = Nothing
-                            }
+{- Unsupported -}
 
-newtype EmbedVideoBuilderM a = EmbedVideoBuilderM { _runEmbedVideoBuilder :: State EmbedVideo a }
-    deriving (Functor, Applicative, Monad, MonadState EmbedVideo)
-
-runEmbedVideoBuilder :: Text -> EmbedVideoBuilderM () -> EmbedVideo
-runEmbedVideoBuilder u = snd . (`runState` emptyVideo u) . _runEmbedVideoBuilder
-
-videoProxyUrl :: Text -> EmbedVideoBuilderM ()
-videoProxyUrl url = modify (\vid -> vid { embedVideoProxyUrl = Just url })
-
-videoHeight :: Integer -> EmbedVideoBuilderM ()
-videoHeight height = modify (\vid -> vid { embedVideoHeight = Just height })
-
-videoWidth :: Integer -> EmbedVideoBuilderM ()
-videoWidth width = modify (\vid -> vid { embedVideoWidth = Just width })
+-- emptyVideo :: Text -> EmbedVideo
+-- emptyVideo url = EmbedVideo { embedVideoUrl = Just url
+--                             , embedVideoProxyUrl = Nothing
+--                             , embedVideoHeight   = Nothing
+--                             , embedVideoWidth    = Nothing
+--                             }
+-- 
+-- newtype EmbedVideoBuilderM a = EmbedVideoBuilderM { _runEmbedVideoBuilder :: State EmbedVideo a }
+--     deriving (Functor, Applicative, Monad, MonadState EmbedVideo)
+-- 
+-- runEmbedVideoBuilder :: Text -> EmbedVideoBuilderM () -> EmbedVideo
+-- runEmbedVideoBuilder u = snd . (`runState` emptyVideo u) . _runEmbedVideoBuilder
+-- 
+-- videoProxyUrl :: Text -> EmbedVideoBuilderM ()
+-- videoProxyUrl url = modify (\vid -> vid { embedVideoProxyUrl = Just url })
+-- 
+-- videoHeight :: Integer -> EmbedVideoBuilderM ()
+-- videoHeight height = modify (\vid -> vid { embedVideoHeight = Just height })
+-- 
+-- videoWidth :: Integer -> EmbedVideoBuilderM ()
+-- videoWidth width = modify (\vid -> vid { embedVideoWidth = Just width })
 

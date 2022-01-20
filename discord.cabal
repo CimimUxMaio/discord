@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Discord.API.Internal.Gateway
+      Discord.API.Internal.Http.Cdn
       Discord.API.Internal.Http.Channel
       Discord.API.Internal.Http.Common
       Discord.API.Internal.Http.Types
