@@ -21,7 +21,7 @@ import Control.Monad.Trans.Reader (ReaderT (runReaderT))
 import Control.Monad.RWS (MonadReader (ask), asks)
 import Discord.API.Internal.Types.BotEvent (BotEvent(Ready, Resumed))
 import Data.Time (UTCTime, getCurrentTime, diffUTCTime)
-import Protolude (print, Chan, writeChan, when, finally, SomeException (SomeException))
+import Protolude (print, Chan, writeChan, when, finally, SomeException (SomeException), isLeft)
 import Prelude hiding (print)
 import Discord.Core.Internal.Types (BotConfig(token))
 import Control.Monad.Extra (whenJust)
@@ -201,7 +201,9 @@ readGatewayRef getter = do
 gatewayReceive :: Connection -> GatewayM (Either Text GatewayReceivable)
 gatewayReceive conn = do
     msg <- liftIO $ receiveData conn
-    pure (first pack $ eitherDecode msg :: Either Text GatewayReceivable)
+    let result = (first pack $ eitherDecode msg :: Either Text GatewayReceivable)
+    if isLeft result then print msg else pure ()
+    pure result
 
 
 startHeartbeatLoop :: IORef (Maybe Integer) -> Connection -> Int -> IO ThreadId

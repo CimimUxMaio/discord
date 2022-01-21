@@ -9,8 +9,9 @@ import Discord.API.Internal.Types.Embed (Embed, EmbedField (EmbedField))
 import Discord.API.Internal.Http.Channel (sendMessage)
 import Control.Monad.Reader (asks)
 import Discord.Core.Comms (sendText, sendEmbeds)
-import Discord.Core.Embeds (runEmbedBuilder, description, title, thumbnail, author, authorIconUrl, authorUrl, footer, footerIconUrl, image, color, fields)
+import Discord.Core.Embeds.Builder (runEmbedBuilder, description, title, thumbnail, author, authorIconUrl, authorUrl, footer, footerIconUrl, image, color, fields)
 import Discord.API.Internal.Types.User (User(userId, userName, userAvatarUrl))
+import Discord.Core.Embeds.Colors (cyan, cornflowerblue, tomato)
 
 
 customConfig :: BotConfig
@@ -30,7 +31,7 @@ customEmbed :: Maybe User -> Embed
 customEmbed blame = runEmbedBuilder $ do 
     title "A nice title"
     description "a nicer embed description"
-    color 600
+    color tomato
 
     thumbnail "https://cryptocurrency-nieuws.nl/wp-content/uploads/2022/01/kan-cardano-de-2-halen-deze-week.jpg"
     image "https://cryptocurrency-nieuws.nl/wp-content/uploads/2022/01/kan-cardano-de-2-halen-deze-week.jpg"

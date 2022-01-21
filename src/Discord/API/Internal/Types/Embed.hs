@@ -5,10 +5,10 @@ import Data.Aeson
     ( (.!=), (.:), (.:?), withObject, FromJSON(parseJSON), ToJSON (toJSON), object, (.=) )
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import Data.Aeson.Types (ToJSON)
+import Data.Aeson.Types (ToJSON, Parser)
 
 
-data Embed = Embed 
+data Embed = Embed
     { embedAuthor      :: Maybe EmbedAuthor     -- author information
     , embedTitle       :: Maybe Text            -- title of embed
     , embedUrl         :: Maybe Text            -- url of embed
@@ -17,7 +17,7 @@ data Embed = Embed
     , embedFields      :: [EmbedField]          -- fields information
     , embedImage       :: Maybe EmbedImage      -- image information
     , embedFooter      :: Maybe EmbedFooter     -- footer information
-    , embedColor       :: Maybe Integer         -- color code of the embed
+    , embedColor       :: Maybe (EmbedColor)    -- color code of the embed
     , embedTimestamp   :: Maybe UTCTime         -- timestamp of embed content
     , embedVideo       :: Maybe EmbedVideo      -- video information
     , embedProvider    :: Maybe EmbedProvider   -- provider information
@@ -39,7 +39,7 @@ instance FromJSON Embed where
               <*> o .:? "provider"
 
 instance ToJSON Embed where
-    toJSON Embed{..} = 
+    toJSON Embed{..} =
         object [ "author"      .= embedAuthor
                , "title"       .= embedTitle
                , "url"         .= embedUrl
@@ -70,7 +70,7 @@ instance FromJSON EmbedAuthor where
                     <*> o .:? "proxy_icon_url"
 
 instance ToJSON EmbedAuthor where
-    toJSON EmbedAuthor{..} = 
+    toJSON EmbedAuthor{..} =
         object [ "name"           .= embedAuthorName
                , "url"            .= embedAuthorUrl
                , "url"            .= embedAuthorIconUrl
@@ -93,7 +93,7 @@ instance FromJSON EmbedThumbnail where
                        <*> o .:? "width"
 
 instance ToJSON EmbedThumbnail where
-    toJSON EmbedThumbnail{..} = 
+    toJSON EmbedThumbnail{..} =
         object [ "url"       .= embedThumbnailUrl
                , "proxy_url" .= embedThumbnailProxyUrl
                , "height"    .= embedThumbnailHeight
@@ -102,8 +102,8 @@ instance ToJSON EmbedThumbnail where
 
 
 data EmbedField = EmbedField
-    { embedFieldName     :: Text        -- name of the field
-    , embedFieldValue    :: Text        -- value of the field
+    { embedFieldName     :: Text  -- name of the field
+    , embedFieldValue    :: Text  -- value of the field
     , embedFieldIsInline :: Bool  -- whether or not this field should display inline
     } deriving Show
 
@@ -136,7 +136,7 @@ instance FromJSON EmbedImage where
                    <*> o .:? "width"
 
 instance ToJSON EmbedImage where
-    toJSON EmbedImage{..} = 
+    toJSON EmbedImage{..} =
         object [ "url"       .= embedImageUrl
                , "proxy_url" .= embedImageProxyUrl
                , "height"    .= embedImageHeight
@@ -157,11 +157,27 @@ instance FromJSON EmbedFooter where
                     <*> o .:? "proxy_icon_url"
 
 instance ToJSON EmbedFooter where
-    toJSON EmbedFooter{..} = 
+    toJSON EmbedFooter{..} =
         object [ "text"           .= embedFooterText
                , "icon_url"       .= embedFooterIconUrl
                , "proxy_icon_url" .= embedFooterProxyIconUrl
                ]
+
+
+data EmbedColor = EmbedColor Integer Integer Integer
+    deriving Show
+
+instance FromJSON EmbedColor where
+    parseJSON value = do
+        decimalValue <- parseJSON value :: Parser Integer
+        let r = decimalValue `div` (256 * 256)
+        let g = (decimalValue `div` 256) `mod` 256
+        let b = decimalValue `mod` 256
+        pure (EmbedColor r g b)
+
+instance ToJSON EmbedColor where
+    toJSON (EmbedColor r g b) = toJSON (r * 256 * 256 + g * 256 + b)
+
 
 
 data EmbedVideo = EmbedVideo
@@ -179,7 +195,7 @@ instance FromJSON EmbedVideo where
                    <*> o .:? "width"
 
 instance ToJSON EmbedVideo where
-    toJSON EmbedVideo{..} = 
+    toJSON EmbedVideo{..} =
         object [ "url"       .= embedVideoUrl
                , "proxy_url" .= embedVideoProxyUrl
                , "height"    .= embedVideoHeight

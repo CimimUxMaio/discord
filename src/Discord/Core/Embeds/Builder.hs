@@ -1,5 +1,5 @@
-module Discord.Core.Embeds where
-import Discord.API.Internal.Types.Embed (Embed (..), EmbedAuthor (EmbedAuthor, embedAuthorName, embedAuthorUrl, embedAuthorIconUrl, embedAuthorProxyIconUrl), EmbedThumbnail (EmbedThumbnail, embedThumbnailProxyUrl, embedThumbnailUrl, embedThumbnailHeight, embedThumbnailWidth), EmbedField, EmbedImage (EmbedImage, embedImageUrl, embedImageProxyUrl, embedImageHeight, embedImageWidth), EmbedFooter (EmbedFooter, embedFooterText, embedFooterIconUrl, embedFooterProxyIconUrl), EmbedVideo (EmbedVideo, embedVideoProxyUrl, embedVideoUrl, embedVideoHeight, embedVideoWidth), EmbedProvider (embedProviderName, embedProviderUrl, EmbedProvider))
+module Discord.Core.Embeds.Builder where
+import Discord.API.Internal.Types.Embed (Embed (..), EmbedAuthor (EmbedAuthor, embedAuthorName, embedAuthorUrl, embedAuthorIconUrl, embedAuthorProxyIconUrl), EmbedThumbnail (EmbedThumbnail, embedThumbnailProxyUrl, embedThumbnailUrl, embedThumbnailHeight, embedThumbnailWidth), EmbedField, EmbedImage (EmbedImage, embedImageUrl, embedImageProxyUrl, embedImageHeight, embedImageWidth), EmbedFooter (EmbedFooter, embedFooterText, embedFooterIconUrl, embedFooterProxyIconUrl), EmbedVideo (EmbedVideo, embedVideoProxyUrl, embedVideoUrl, embedVideoHeight, embedVideoWidth), EmbedProvider (embedProviderName, embedProviderUrl, EmbedProvider), EmbedColor)
 import Control.Monad.RWS (MonadState)
 import Control.Monad.State (State, runState, modify)
 import Data.Text (Text)
@@ -68,7 +68,7 @@ footer :: Text -> EmbedFooterBuilderM () -> EmbedBuilderM ()
 footer txt footerBuilder = modify (\emb -> emb { embedFooter = Just newFooter })
     where newFooter = runEmbedFooterBuilder txt footerBuilder 
 
-color :: Integer -> EmbedBuilderM ()
+color :: EmbedColor -> EmbedBuilderM ()
 color c = modify (\emb -> emb { embedColor = Just c })
 
 timestamp :: UTCTime -> EmbedBuilderM ()
