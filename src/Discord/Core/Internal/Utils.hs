@@ -9,7 +9,7 @@ import Discord.API.Internal.Types.BotEvent (BotEvent(MessageCreate))
 import Discord.API.Internal.Types.Message (Message (messageText))
 
 
-addParser :: BotEventParser (BotAction ()) -> BotM ()
+addParser :: BotEventParser (BotAction s ()) -> BotM s ()
 addParser parser = tell [parser]
 
 

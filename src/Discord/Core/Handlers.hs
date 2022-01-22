@@ -6,15 +6,15 @@ import Control.Monad.Reader (MonadReader (reader))
 import Discord.API.Internal.Types.Message (Message)
 
 
-(#>) :: BotEventParser a -> (a -> BotAction ()) -> BotM ()
+(#>) :: BotEventParser a -> (a -> BotAction s ()) -> BotM s ()
 (#>) p f = addParser $ f <$> p
 
 
-onMessage :: (Message -> BotAction ()) -> BotM ()
+onMessage :: (Message -> BotAction s ()) -> BotM s ()
 onMessage = (messageCreateParser #>)
 
 
-onCommand :: Text -> ((Message, [Text]) -> BotAction ()) -> BotM ()
+onCommand :: Text -> ((Message, [Text]) -> BotAction s ()) -> BotM s ()
 onCommand name f = do
     prefix' <- reader prefix
     commandParser prefix' name #> f

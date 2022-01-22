@@ -7,16 +7,16 @@ import Control.Concurrent (newChan, threadDelay, writeChan, Chan, readChan)
 import Discord.Core.EventLoop (startEventLoop)
 import GHC.Conc (forkIO)
 import Discord.API.Internal.Types.BotEvent (BotEvent(Resumed))
-import Discord.Core.Internal.Types (BotEventParser, BotAction, BotM, BotConfig (prefix, token), BotApp (config), botAppEventHandler, runBotAction)
+import Discord.Core.Internal.Types (BotEventParser, BotAction, BotM, BotConfig (prefix, token), BotApp (appConfig), botAppEventHandler, runBotAction)
 import Control.Monad.Trans.Writer (tell)
 import Discord.API.Internal.Gateway (startGatewayController)
 import Data.Default (def)
 
 
 
-startBot :: BotApp -> IO ()
+startBot :: BotApp s -> IO ()
 startBot app = do
     eventQueue <- newChan
     _eventLoop <- forkIO $ startEventLoop eventQueue app
     print "bot started"
-    startGatewayController (token . config $ app) def eventQueue
+    startGatewayController (token . appConfig $ app) def eventQueue

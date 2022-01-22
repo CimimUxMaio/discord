@@ -12,18 +12,23 @@ import Discord.Core.Comms (sendText, sendEmbeds)
 import Discord.Core.Embeds.Builder (runEmbedBuilder, description, title, thumbnail, author, authorIconUrl, authorUrl, footer, footerIconUrl, image, color, fields)
 import Discord.API.Internal.Types.User (User(userId, userName, userAvatarUrl))
 import Discord.Core.Embeds.Colors (cyan, cornflowerblue, tomato)
+import Discord.Core.Internal.Types (BotApp(appInitialState))
+import Control.Monad.RWS (modify, get)
 
+
+newtype CustomAppState = CustomAppState Int deriving (Show, Num)
 
 customConfig :: BotConfig
 customConfig = BotConfig
     { prefix = "?"
-    , token = "<your_token>" 
+    , token  = "<your_token>" 
     }
 
-app :: BotApp
+app :: BotApp CustomAppState
 app = BotApp
-    { config  = customConfig 
-    , handler = customHandler 
+    { appConfig       = customConfig 
+    , appInitialState = CustomAppState 0
+    , appHandler      = customHandler 
     }
     
 
@@ -51,7 +56,7 @@ customEmbed blame = runEmbedBuilder $ do
                 footerIconUrl (userAvatarUrl u)
 
 
-customHandler :: BotM ()
+customHandler :: BotM CustomAppState ()
 customHandler = do
     onCommand "embed" $ \(msg, args) -> do
         let chid = messageChannelId msg
@@ -62,9 +67,11 @@ customHandler = do
     onCommand "ping" $ \(msg, args) -> do
         let chid = messageChannelId msg
         sendText chid "Pong!"
+        modify (+1)
+        pingCounter <- get
+        liftIO $ print pingCounter
         liftIO $ print "Pong!"
 
 
 main :: IO ()
-main = do
-    startBot app
+main = startBot app

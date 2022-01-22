@@ -11,15 +11,19 @@ import Control.Applicative (Alternative)
 import GHC.Base (Alternative(empty, (<|>)))
 import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
+import Control.Monad.Trans.State (StateT (runStateT))
+import Control.Monad.RWS (MonadState)
 
 
-data BotApp = BotApp
-    { config :: BotConfig
-    , handler :: BotM () }
+data BotApp s = BotApp
+    { appConfig       :: BotConfig
+    , appInitialState :: s
+    , appHandler      :: BotM s ()
+    }
 
-botAppEventHandler :: BotApp -> BotEvent -> BotAction ()
+botAppEventHandler :: BotApp s -> BotEvent -> BotAction s ()
 botAppEventHandler app event =
-    fromMaybe (pure ()) . ($ event) . runBotEventParser . asum $ runBotM (handler app) (config app)
+    fromMaybe (pure ()) . ($ event) . runBotEventParser . asum $ runBotM (appHandler app) (appConfig app)
 
 
 data BotConfig = BotConfig
@@ -28,21 +32,20 @@ data BotConfig = BotConfig
     } deriving (Show)
 
 
-type BotActionEventParser_ = BotEventParser (BotAction ())
+type BotActionEventParser_ s = BotEventParser (BotAction s ())
 
-newtype BotM a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotActionEventParser_]) a }
-    deriving (Functor, Applicative, Monad, MonadReader BotConfig, MonadWriter [BotActionEventParser_])
+newtype BotM s a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotActionEventParser_ s]) a }
+    deriving (Functor, Applicative, Monad, MonadReader BotConfig, MonadWriter [BotActionEventParser_ s])
 
-
-runBotM :: BotM a -> BotConfig -> [BotEventParser (BotAction ())]
+runBotM :: BotM s a -> BotConfig -> [BotEventParser (BotAction s ())]
 runBotM m = snd . runWriter . runReaderT (_runBotM m)
 
 
-newtype BotAction a = BotAction { _runBotAction :: ReaderT BotConfig IO a }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader BotConfig)
+newtype BotAction s a = BotAction { _runBotAction :: ReaderT BotConfig (StateT s IO) a }
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader BotConfig, MonadState s)
 
-runBotAction :: BotConfig -> BotAction () -> IO ()
-runBotAction cfg action = runReaderT (_runBotAction action) cfg
+runBotAction :: BotConfig -> s -> BotAction s a -> IO (a, s)
+runBotAction cfg state = (`runStateT` state) . (`runReaderT` cfg) . _runBotAction
 
 
 newtype BotEventParser a = BotEventParser

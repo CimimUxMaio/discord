@@ -9,21 +9,21 @@ import Discord.API.Internal.Types.Common (Snowflake)
 import Discord.API.Internal.Types.Embed (Embed)
 
 
-liftWithToken :: (Text -> IO a) -> BotAction a
+liftWithToken :: (Text -> IO a) -> BotAction s a
 liftWithToken f = asks token >>= (liftIO . f)
 
 
-send :: Snowflake -> SendableMessage -> BotAction Message
+send :: Snowflake -> SendableMessage -> BotAction s Message
 send chid = liftWithToken . sendMessage chid
 
 
-sendText :: Snowflake -> Text -> BotAction Message
+sendText :: Snowflake -> Text -> BotAction s Message
 sendText chid = send chid . SendableText
 
 
-sendEmbeds :: Snowflake -> [Embed] -> BotAction Message
+sendEmbeds :: Snowflake -> [Embed] -> BotAction s Message
 sendEmbeds chid = send chid . SendableEmbeds
 
 
-sendStickers :: Snowflake -> [Snowflake] -> BotAction Message 
+sendStickers :: Snowflake -> [Snowflake] -> BotAction s Message 
 sendStickers chid = send chid . SendableStickers
