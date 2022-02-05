@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
 import Discord.Core.Internal.Types (BotConfig (..), BotApp (..), BotM)
@@ -12,8 +14,9 @@ import Discord.Core.Comms (sendText, sendEmbeds)
 import Discord.Core.Embeds.Builder (runEmbedBuilder, description, title, thumbnail, author, authorIconUrl, authorUrl, footer, footerIconUrl, image, color, fields)
 import Discord.API.Internal.Types.User (User(userId, userName, userAvatarUrl))
 import Discord.Core.Embeds.Colors (cyan, cornflowerblue, tomato)
-import Discord.Core.Internal.Types (BotApp(appInitialState))
+import Discord.Core.Internal.Types (BotApp(appInitialState, appExceptionHandlers), BotExceptionHandler (BotExceptionHandler))
 import Control.Monad.RWS (modify, get)
+import Control.Exception (throw, ArithException (DivideByZero))
 
 
 newtype CustomAppState = CustomAppState Int deriving (Show, Num)
@@ -26,9 +29,10 @@ customConfig = BotConfig
 
 app :: BotApp CustomAppState
 app = BotApp
-    { appConfig       = customConfig 
-    , appInitialState = CustomAppState 0
-    , appHandler      = customHandler 
+    { appConfig            = customConfig 
+    , appInitialState      = CustomAppState 0
+    , appHandler           = customHandler 
+    , appExceptionHandlers = [ BotExceptionHandler $ \(e :: ArithException) -> liftIO $ print "recovering..." ]
     }
     
 
@@ -67,10 +71,14 @@ customHandler = do
     onCommand "ping" $ \(msg, args) -> do
         let chid = messageChannelId msg
         sendText chid "Pong!"
+
+    onCommand "fail" $ \_ -> do
+        throw DivideByZero
+
+    onCommand "count" $ \_ -> do
         modify (+1)
-        pingCounter <- get
-        liftIO $ print pingCounter
-        liftIO $ print "Pong!"
+        s <- get
+        liftIO $ print s
 
 
 main :: IO ()

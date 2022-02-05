@@ -1,27 +1,32 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Discord.Core.EventLoop (startEventLoop) where
 
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Control.Concurrent (readChan, Chan)
 import Discord.API.Internal.Types.BotEvent (BotEvent)
-import Discord.Core.Internal.Types (BotApp(BotApp, appConfig, appInitialState), runBotAction, botAppEventHandler)
-import Control.Exception (catch, SomeException)
+import Discord.Core.Internal.Types (BotApp(BotApp, appConfig, appInitialState, appExceptionHandlers), runBotAction, botAppEventHandler, toHandler, BotExceptionHandler)
+import Control.Exception (catch, SomeException (SomeException), catches, Handler (Handler))
+import Control.Monad.RWS (MonadState(put, get), void, forever)
+import Control.Monad.Trans.State (StateT(runStateT))
 
 
 
 startEventLoop :: Chan BotEvent -> BotApp s -> IO ()
-startEventLoop eventQueue app = loop eventQueue eventHandler initialState
-    where eventHandler currentState event = snd <$> (runBotAction cfg currentState . botAppEventHandler app $ event)
+startEventLoop eventQueue app = void . (`runStateT` initialState) . forever $ do
+    event <- liftIO $ readChan eventQueue
+    currentState <- get
+    finalState <- liftIO $ catches (eventHandler currentState event) (exceptionHandlers currentState)
+    put finalState
+
+    where eventHandler currentState = (snd <$>) . runBotAction cfg currentState . botAppEventHandler app
           cfg = appConfig app
           initialState = appInitialState app
+          userExceptionHandlers currentState = map (toHandler cfg currentState) (appExceptionHandlers app)
+          exceptionHandlers currentState = userExceptionHandlers currentState ++ [defaultExceptionHandler currentState]
 
 
-loop :: Chan BotEvent -> (s -> BotEvent -> IO s) -> s -> IO ()
-loop eventQueue eventHandler currentState = do
-    event <- readChan eventQueue
-    finalState <- catch (eventHandler currentState event) (handleException currentState)
-    loop eventQueue eventHandler finalState
-
-
-handleException :: s -> SomeException -> IO s  -- Handles user produced exceptions
-handleException prevState e = print e >> pure prevState
+defaultExceptionHandler :: s -> Handler s
+defaultExceptionHandler prevState = 
+    Handler $ \(e :: SomeException) -> print e >> pure prevState

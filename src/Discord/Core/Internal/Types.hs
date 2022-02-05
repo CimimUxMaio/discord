@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Discord.Core.Internal.Types where
 
@@ -13,12 +14,21 @@ import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.State (StateT (runStateT))
 import Control.Monad.RWS (MonadState)
+import Control.Exception (Exception, Handler (Handler))
+
+
+data BotExceptionHandler s =
+    forall e. Exception e => BotExceptionHandler (e -> BotAction s ())
+
+toHandler :: BotConfig -> s -> BotExceptionHandler s -> Handler s
+toHandler cfg state (BotExceptionHandler h) = Handler $ (snd <$>) . runBotAction cfg state . h
 
 
 data BotApp s = BotApp
-    { appConfig       :: BotConfig
-    , appInitialState :: s
-    , appHandler      :: BotM s ()
+    { appConfig            :: BotConfig
+    , appInitialState      :: s
+    , appExceptionHandlers :: [BotExceptionHandler s]
+    , appHandler           :: BotM s ()
     }
 
 botAppEventHandler :: BotApp s -> BotEvent -> BotAction s ()
