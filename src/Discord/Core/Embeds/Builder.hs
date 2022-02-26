@@ -28,21 +28,46 @@ newtype EmbedBuilderM a = EmbedBuilderM { _runEmbedBuilder :: State Embed a }
     deriving (Functor, Applicative, Monad, MonadState Embed)
 
 
+{- | Defines a clean way of constructing 'Embed' values, which can have many optional fields, given a 'EmbedBuilderM'.
+__Example__:
+@
+embedExample :: Embed
+embedExample = runEmbedBuilder $ do 
+    title "A nice title"
+    description "a nicer embed description"
+@
+-}
 runEmbedBuilder :: EmbedBuilderM () -> Embed
 runEmbedBuilder = snd . (`runState` emptyEmbed) . _runEmbedBuilder
 
 
-author :: Text -> EmbedAuthorBuilderM () -> EmbedBuilderM ()
+-- | Defines a clean way of constructing 'EmbedAuthor' values, which can have many optional fields, given a 'EmbedAuthorBuilderM'.
+author 
+    :: Text                    -- ^ Author name
+    -> EmbedAuthorBuilderM ()  -- ^ Builder for optional fields
+    -> EmbedBuilderM ()
 author name authorBuilder = modify (\emb -> emb { embedAuthor = Just newAuthor })
     where newAuthor = runEmbedAuthorBuilder name authorBuilder
 
-title :: Text -> EmbedBuilderM ()
+
+-- | Adds a title to the 'Embed' being built.
+title 
+    :: Text  -- ^ Title
+    -> EmbedBuilderM ()
 title t = modify (\emb -> emb { embedTitle = Just t })
 
-url :: Text -> EmbedBuilderM ()
+
+-- | Adds an url to the 'Embed' being built.
+url 
+    :: Text  -- ^ Url
+    -> EmbedBuilderM ()
 url u = modify (\emb -> emb { embedTitle = Just u })
 
-thumbnail :: Text -> EmbedBuilderM ()
+
+-- | Adds a thumbnail to the 'Embed' being built.
+thumbnail 
+    :: Text  -- ^ Image url
+    -> EmbedBuilderM ()
 thumbnail url = modify (\emb -> emb { embedThumbnail = Just newThumbnail })
     where newThumbnail = EmbedThumbnail { embedThumbnailUrl      = url
                                         , embedThumbnailProxyUrl = Nothing
@@ -50,13 +75,25 @@ thumbnail url = modify (\emb -> emb { embedThumbnail = Just newThumbnail })
                                         , embedThumbnailWidth    = Nothing 
                                         } 
 
-description :: Text -> EmbedBuilderM ()
+
+-- | Adds a description to the 'Embed' being built.
+description 
+    :: Text  -- ^ Description
+    -> EmbedBuilderM ()
 description desc = modify (\emb -> emb { embedDescription = Just desc })
 
-fields :: [EmbedField] -> EmbedBuilderM ()
+
+-- | Adds embed fields to the 'Embed' being built.
+fields 
+    :: [EmbedField]  -- ^ 'EmbedField' list
+    -> EmbedBuilderM ()
 fields fs = modify (\emb -> emb { embedFields = fs })
 
-image :: Text -> EmbedBuilderM ()
+
+-- | Adds an image to the 'Embed' being built.
+image 
+    :: Text  -- ^ Image url
+    -> EmbedBuilderM ()
 image url = modify (\emb -> emb { embedImage = Just newImage })
     where newImage = EmbedImage { embedImageUrl      = url
                                 , embedImageProxyUrl = Nothing
@@ -64,15 +101,29 @@ image url = modify (\emb -> emb { embedImage = Just newImage })
                                 , embedImageWidth    = Nothing
                                 }
 
-footer :: Text -> EmbedFooterBuilderM () -> EmbedBuilderM ()
+
+-- | Defines a clean way of constructing 'EmbedFooter' values, which can have many optional fields, given a 'EmbedFooterBuilderM'.
+footer 
+    :: Text                    -- ^ Footer text
+    -> EmbedFooterBuilderM ()  -- ^ Builder for optional fields
+    -> EmbedBuilderM ()
 footer txt footerBuilder = modify (\emb -> emb { embedFooter = Just newFooter })
     where newFooter = runEmbedFooterBuilder txt footerBuilder 
 
-color :: EmbedColor -> EmbedBuilderM ()
+
+-- | Adds color to the 'Embed' being built.
+color 
+    :: EmbedColor  -- ^ Embed color
+    -> EmbedBuilderM ()
 color c = modify (\emb -> emb { embedColor = Just c })
 
-timestamp :: UTCTime -> EmbedBuilderM ()
+
+-- | Adds a timestamp to the 'Embed' being built.
+timestamp 
+    :: UTCTime  -- Timestamp
+    -> EmbedBuilderM ()
 timestamp t = modify (\emb -> emb { embedTimestamp = Just t })
+
 
 {- Unsupported -}
 
@@ -87,7 +138,6 @@ timestamp t = modify (\emb -> emb { embedTimestamp = Just t })
 --                                       }
 
 
-
 emptyAuthor :: Text -> EmbedAuthor
 emptyAuthor name = EmbedAuthor { embedAuthorName         = name
                                , embedAuthorUrl          = Nothing 
@@ -98,16 +148,29 @@ emptyAuthor name = EmbedAuthor { embedAuthorName         = name
 newtype EmbedAuthorBuilderM a = EmbedAuthorBuilderM { _runEmbedAuthorBuilder :: State EmbedAuthor a }
     deriving (Functor, Applicative, Monad, MonadState EmbedAuthor)
 
+
 runEmbedAuthorBuilder :: Text -> EmbedAuthorBuilderM () -> EmbedAuthor
 runEmbedAuthorBuilder name = snd . (`runState` emptyAuthor name) . _runEmbedAuthorBuilder
 
-authorUrl :: Text -> EmbedAuthorBuilderM ()
+
+-- | Adds an url to the 'EmbedAuthor' being built.
+authorUrl 
+    :: Text  -- ^ Author url
+    -> EmbedAuthorBuilderM ()
 authorUrl u = modify (\a -> a { embedAuthorUrl = Just u })
 
-authorIconUrl :: Text -> EmbedAuthorBuilderM ()
+
+-- | Adds an author icon to the 'EmbedAuthor' being built.
+authorIconUrl 
+    :: Text  -- ^ Icon url
+    -> EmbedAuthorBuilderM ()
 authorIconUrl u = modify (\a -> a { embedAuthorIconUrl = Just u })
 
-authorProxyIconUrl :: Text -> EmbedAuthorBuilderM ()
+
+-- | Adds an author icon proxy to the 'EmbedAuthor' being built.
+authorProxyIconUrl 
+    :: Text  -- ^ Icon proxy url
+    -> EmbedAuthorBuilderM ()
 authorProxyIconUrl u = modify (\a -> a { embedAuthorProxyIconUrl = Just u })
 
 
@@ -174,10 +237,18 @@ newtype EmbedFooterBuilderM a = EmbedFooterBuilderM { _runEmbedFooterBuilder :: 
 runEmbedFooterBuilder :: Text -> EmbedFooterBuilderM () -> EmbedFooter
 runEmbedFooterBuilder txt = snd . (`runState` emptyFooter txt) . _runEmbedFooterBuilder
 
-footerIconUrl :: Text -> EmbedFooterBuilderM ()
+
+-- | Adds an icon to the 'EmbedFooter' being built.
+footerIconUrl 
+    :: Text  -- ^ Icon url
+    -> EmbedFooterBuilderM ()
 footerIconUrl url = modify (\f -> f { embedFooterIconUrl = Just url })
 
-footerProxyUrl :: Text -> EmbedFooterBuilderM ()
+
+-- | Adds an icon proxy to the 'EmbedFooter' being built.
+footerProxyUrl 
+    :: Text  -- ^ Icon proxy url
+    -> EmbedFooterBuilderM ()
 footerProxyUrl url = modify (\f -> f { embedFooterProxyIconUrl = Just url })
 
 
@@ -205,4 +276,3 @@ footerProxyUrl url = modify (\f -> f { embedFooterProxyIconUrl = Just url })
 -- 
 -- videoWidth :: Integer -> EmbedVideoBuilderM ()
 -- videoWidth width = modify (\vid -> vid { embedVideoWidth = Just width })
-

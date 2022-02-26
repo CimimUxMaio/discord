@@ -13,17 +13,39 @@ liftWithToken :: (Text -> IO a) -> BotAction s a
 liftWithToken f = asks token >>= (liftIO . f)
 
 
-send :: Snowflake -> SendableMessage -> BotAction s Message
+-- | Sends a sendable value to the given channel id.
+send 
+    :: Snowflake            -- ^ Text channel ID
+    -> SendableMessage      -- ^ Sendable
+    -> BotAction s Message  -- ^ Action
 send chid = liftWithToken . sendMessage chid
 
 
-sendText :: Snowflake -> Text -> BotAction s Message
+{- | @send@ wrapper.
+Sends text to the given channel id.
+-}
+sendText 
+    :: Snowflake            -- ^ Text channel ID
+    -> Text                 -- ^ Text to be sent
+    -> BotAction s Message  -- ^ Action
 sendText chid = send chid . SendableText
 
 
-sendEmbeds :: Snowflake -> [Embed] -> BotAction s Message
+{- | @send@ wrapper.
+Sends embeds to the given channel id.
+-}
+sendEmbeds 
+    :: Snowflake            -- ^ Text channel ID
+    -> [Embed]              -- ^ Embed list
+    -> BotAction s Message  -- ^ Action
 sendEmbeds chid = send chid . SendableEmbeds
 
 
-sendStickers :: Snowflake -> [Snowflake] -> BotAction s Message 
+{- | @send@ wrapper.
+Sends stickers to the given channel id.
+-}
+sendStickers 
+    :: Snowflake            -- ^ Text channel ID
+    -> [Snowflake]          -- ^ Sticker list
+    -> BotAction s Message  -- ^ Action
 sendStickers chid = send chid . SendableStickers

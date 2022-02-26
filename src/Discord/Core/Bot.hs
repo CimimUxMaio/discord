@@ -13,7 +13,7 @@ import Discord.API.Internal.Gateway (startGatewayController)
 import Data.Default (def)
 
 
-
+-- | Starts the bot application.
 startBot :: BotApp s -> IO ()
 startBot app = do
     eventQueue <- newChan
