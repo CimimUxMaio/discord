@@ -9,11 +9,13 @@ import Control.Monad.Reader (MonadReader (reader))
 import Discord.API.Internal.Types.Message (Message)
 import Discord.Core.Internal.Parsers
     ( BotEventParser, messageCreateParser, commandParser )
-import Discord.Core.Context (Context (CommandCtx))
+import Discord.Core.Context (Context (CommandCtx, MessageCtx))
 
 
 onMessage :: (Message -> BotAction s ()) -> BotM s ()
-onMessage = undefined -- (messageCreateParser #>)
+onMessage f = addParser $ do
+    ctx@(MessageCtx msg) <- messageCreateParser
+    pure (ctx, f msg)
 
 
 onCommand :: Text -> (Message -> [Text] -> BotAction s ()) -> BotM s ()
