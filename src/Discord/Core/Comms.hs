@@ -26,7 +26,7 @@ send
 send chid = liftWithToken . sendMessage chid
 
 
-{- | @send@ wrapper.
+{- | 'send' wrapper.
 Sends text to the given channel id.
 -}
 sendText 
@@ -36,7 +36,7 @@ sendText
 sendText chid = send chid . SendableText
 
 
-{- | @send@ wrapper.
+{- | 'send' wrapper.
 Sends embeds to the given channel id.
 -}
 sendEmbeds 
@@ -46,7 +46,7 @@ sendEmbeds
 sendEmbeds chid = send chid . SendableEmbeds
 
 
-{- | @send@ wrapper.
+{- | 'send' wrapper.
 Sends stickers to the given channel id.
 -}
 sendStickers 
