@@ -42,8 +42,9 @@ library
       Discord.Core.Comms
       Discord.Core.Embeds.Builder
       Discord.Core.Embeds.Colors
-      Discord.Core.EventLoop
       Discord.Core.Handlers
+      Discord.Core.Internal.EventLoop
+      Discord.Core.Internal.Parsers
       Discord.Core.Internal.Types
       Discord.Core.Internal.Utils
   other-modules:

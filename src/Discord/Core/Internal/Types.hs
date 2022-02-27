@@ -14,14 +14,18 @@ import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.State (StateT (runStateT))
 import Control.Monad.RWS (MonadState)
-import Control.Exception (Exception, Handler (Handler))
+import Control.Exception (Exception)
+import Discord.Core.Internal.Parsers (BotEventParser)
 
 
 data BotExceptionHandler s =
     forall e. Exception e => BotExceptionHandler (e -> BotAction s ())
 
-toHandler :: BotConfig -> s -> BotExceptionHandler s -> Handler s
-toHandler cfg state (BotExceptionHandler h) = Handler $ (snd <$>) . runBotAction cfg state . h
+
+data BotConfig = BotConfig
+    { prefix :: Text
+    , token  :: Text
+    } deriving (Show)
 
 
 data BotApp s = BotApp
@@ -30,16 +34,6 @@ data BotApp s = BotApp
     , appExceptionHandlers :: [BotExceptionHandler s]
     , appHandler           :: BotM s ()
     }
-
-botAppEventHandler :: BotApp s -> BotEvent -> BotAction s ()
-botAppEventHandler app event =
-    fromMaybe (pure ()) . ($ event) . runBotEventParser . asum $ runBotM (appHandler app) (appConfig app)
-
-
-data BotConfig = BotConfig
-    { prefix :: Text
-    , token  :: Text
-    } deriving (Show)
 
 
 type BotActionEventParser_ s = BotEventParser (BotAction s ())
@@ -56,25 +50,4 @@ newtype BotAction s a = BotAction { _runBotAction :: ReaderT BotConfig (StateT s
 
 runBotAction :: BotConfig -> s -> BotAction s a -> IO (a, s)
 runBotAction cfg state = (`runStateT` state) . (`runReaderT` cfg) . _runBotAction
-
-
-newtype BotEventParser a = BotEventParser
-    { runBotEventParser :: BotEvent -> Maybe a }
-    deriving Functor
-
-instance Applicative BotEventParser where
-    pure x = BotEventParser (pure . pure $ x)
-    BotEventParser f <*> BotEventParser x = BotEventParser $ \e -> f e <*> x e
-
-instance Alternative BotEventParser where
-    empty = BotEventParser $ const Nothing
-    BotEventParser f <|> BotEventParser g = BotEventParser $ \e -> f e <|> g e
-
-instance Monad BotEventParser where
-    return = pure
-    BotEventParser x >>= f = BotEventParser $ \e -> x e >>= flip runBotEventParser e . f
-
-instance MonadFail BotEventParser where
-    fail _ = empty
-
 

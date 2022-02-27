@@ -1,9 +1,14 @@
-module Discord.Core.Handlers where
-import Discord.Core.Internal.Types (BotAction, BotM (BotM), BotEventParser, BotConfig (prefix))
+module Discord.Core.Handlers 
+( onMessage
+, onCommand ) where
+
+import Discord.Core.Internal.Types (BotAction, BotM (BotM), BotConfig (prefix))
 import Data.Text (Text)
-import Discord.Core.Internal.Utils (addParser, messageCreateParser, commandParser)
+import Discord.Core.Internal.Utils (addParser)
 import Control.Monad.Reader (MonadReader (reader))
 import Discord.API.Internal.Types.Message (Message)
+import Discord.Core.Internal.Parsers
+    ( BotEventParser, messageCreateParser, commandParser )
 
 
 (#>) :: BotEventParser a -> (a -> BotAction s ()) -> BotM s ()

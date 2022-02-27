@@ -1,4 +1,9 @@
-module Discord.Core.Comms where
+module Discord.Core.Comms 
+( send
+, sendText
+, sendEmbeds
+, sendStickers ) where
+
 import Discord.Core.Internal.Types (BotConfig (token), BotAction)
 import Data.Text (Text)
 import Control.Monad.RWS (asks, MonadIO (liftIO))
