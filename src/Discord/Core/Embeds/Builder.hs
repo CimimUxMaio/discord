@@ -1,10 +1,26 @@
-module Discord.Core.Embeds.Builder where
+module Discord.Core.Embeds.Builder
+( runEmbedBuilder
+, author
+, title
+, url
+, thumbnail
+, description
+, fields
+, image
+, footer
+, color
+, timestamp
+, authorUrl
+, authorIconUrl
+, authorProxyIconUrl
+, footerIconUrl
+, footerProxyUrl ) where
+
 import Discord.API.Internal.Types.Embed (Embed (..), EmbedAuthor (EmbedAuthor, embedAuthorName, embedAuthorUrl, embedAuthorIconUrl, embedAuthorProxyIconUrl), EmbedThumbnail (EmbedThumbnail, embedThumbnailProxyUrl, embedThumbnailUrl, embedThumbnailHeight, embedThumbnailWidth), EmbedField, EmbedImage (EmbedImage, embedImageUrl, embedImageProxyUrl, embedImageHeight, embedImageWidth), EmbedFooter (EmbedFooter, embedFooterText, embedFooterIconUrl, embedFooterProxyIconUrl), EmbedVideo (EmbedVideo, embedVideoProxyUrl, embedVideoUrl, embedVideoHeight, embedVideoWidth), EmbedProvider (embedProviderName, embedProviderUrl, EmbedProvider), EmbedColor)
 import Control.Monad.RWS (MonadState)
 import Control.Monad.State (State, runState, modify)
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import GHC.Generics (Constructor(conName))
 
 
 
