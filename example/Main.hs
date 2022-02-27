@@ -17,6 +17,7 @@ import Discord.Core.Embeds.Colors (cyan, cornflowerblue, tomato)
 import Discord.Core.Internal.Types (BotApp(appInitialState, appExceptionHandlers), BotExceptionHandler (BotExceptionHandler))
 import Control.Monad.RWS (modify, get)
 import Control.Exception (throw, ArithException (DivideByZero))
+import Control.Monad (void)
 
 
 newtype CustomAppState = CustomAppState Int deriving (Show, Num)
@@ -70,7 +71,7 @@ customHandler = do
 
     onCommand "ping" $ \(msg, args) -> do
         let chid = messageChannelId msg
-        sendText chid "Pong!"
+        void $ sendText chid "Pong!"
 
     onCommand "fail" $ \_ -> do
         throw DivideByZero

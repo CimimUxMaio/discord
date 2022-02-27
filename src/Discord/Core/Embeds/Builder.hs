@@ -29,7 +29,9 @@ newtype EmbedBuilderM a = EmbedBuilderM { _runEmbedBuilder :: State Embed a }
 
 
 {- | Defines a clean way of constructing 'Embed' values, which can have many optional fields, given a 'EmbedBuilderM'.
+
 __Example__:
+
 @
 embedExample :: Embed
 embedExample = runEmbedBuilder $ do 
