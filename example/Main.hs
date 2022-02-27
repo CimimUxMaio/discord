@@ -35,6 +35,7 @@ app cfg = BotApp
     }
 
 
+exceptionHandlers :: [BotExceptionHandler s]
 exceptionHandlers = 
     [ BotExceptionHandler $ \ctx (e :: ArithException) -> do 
         liftIO $ print "Recovering..."

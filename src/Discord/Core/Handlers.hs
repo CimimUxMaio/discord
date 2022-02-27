@@ -12,13 +12,20 @@ import Discord.Core.Internal.Parsers
 import Discord.Core.Context (Context (CommandCtx, MessageCtx))
 
 
-onMessage :: (Message -> BotAction s ()) -> BotM s ()
+-- | Used for defining how to handle "MessageCreate" events.
+onMessage 
+    :: (Message -> BotAction s ())  -- ^ Handler function
+    -> BotM s ()
 onMessage f = addParser $ do
     ctx@(MessageCtx msg) <- messageCreateParser
     pure (ctx, f msg)
 
 
-onCommand :: Text -> (Message -> [Text] -> BotAction s ()) -> BotM s ()
+-- | Used for defining how to handle a given command.
+onCommand 
+    :: Text                                   -- ^ Command name
+    -> (Message -> [Text] -> BotAction s ())  -- ^ Handler function
+    -> BotM s ()
 onCommand name f = do
     prefix' <- reader prefix
     addParser $ do
