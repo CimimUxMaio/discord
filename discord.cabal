@@ -40,6 +40,7 @@ library
       Discord.API.Internal.Types.User
       Discord.Core.Bot
       Discord.Core.Comms
+      Discord.Core.Context
       Discord.Core.Embeds.Builder
       Discord.Core.Embeds.Colors
       Discord.Core.Handlers

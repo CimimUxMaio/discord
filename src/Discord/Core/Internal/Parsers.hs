@@ -7,6 +7,7 @@ import Discord.API.Internal.Types.BotEvent (BotEvent (MessageCreate))
 import Discord.API.Internal.Types.Message (Message (messageText))
 import Data.Text (Text)
 import qualified Data.Text as Text
+import Discord.Core.Context (Context (MessageCtx, CommandCtx))
 
 
 newtype BotEventParser a = BotEventParser
@@ -29,25 +30,28 @@ instance MonadFail BotEventParser where
     fail _ = empty
 
 
-messageCreateParser :: BotEventParser Message
+
+type ContextParser = BotEventParser Context
+
+messageCreateParser :: ContextParser
 messageCreateParser = BotEventParser $ \case
-        MessageCreate msg -> pure msg 
+        MessageCreate msg -> pure $ MessageCtx msg 
         _                 -> fail "not text message"
 
 
-plainTextParser :: Text -> BotEventParser Message
-plainTextParser commandsPrefix = do
-    msg <- messageCreateParser
-    if commandsPrefix `Text.isPrefixOf` messageText msg
-        then fail "this is a command"
-        else pure msg
+-- plainTextParser :: Text -> BotEventParser Message
+-- plainTextParser commandsPrefix = do
+--     MessageCtx msg <- messageCreateParser
+--     if commandsPrefix `Text.isPrefixOf` messageText msg
+--         then fail "this is a command"
+--         else pure msg
 
 
-commandParser :: Text -> Text -> BotEventParser (Message, [Text])
+commandParser :: Text -> Text -> ContextParser
 commandParser prefix' name = do
-    msg <- messageCreateParser
+    MessageCtx msg <- messageCreateParser
     let txt = messageText msg
     case Text.words txt of
         (w:ws) | w == prefix' <> name
-            -> pure (msg, ws)
+            -> pure $ CommandCtx name ws msg
         _   -> fail "not that command"

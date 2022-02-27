@@ -16,10 +16,11 @@ import Control.Monad.Trans.State (StateT (runStateT))
 import Control.Monad.RWS (MonadState)
 import Control.Exception (Exception)
 import Discord.Core.Internal.Parsers (BotEventParser)
+import Discord.Core.Context (Context)
 
 
 data BotExceptionHandler s =
-    forall e. Exception e => BotExceptionHandler (e -> BotAction s ())
+    forall e. Exception e => BotExceptionHandler (Context -> e -> BotAction s ())
 
 
 data BotConfig = BotConfig
@@ -36,12 +37,12 @@ data BotApp s = BotApp
     }
 
 
-type BotActionEventParser_ s = BotEventParser (BotAction s ())
+type BotHandlerEventParser s = BotEventParser (Context, BotAction s ())
 
-newtype BotM s a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotActionEventParser_ s]) a }
-    deriving (Functor, Applicative, Monad, MonadReader BotConfig, MonadWriter [BotActionEventParser_ s])
+newtype BotM s a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotHandlerEventParser s]) a }
+    deriving (Functor, Applicative, Monad, MonadReader BotConfig, MonadWriter [BotHandlerEventParser s])
 
-runBotM :: BotM s a -> BotConfig -> [BotEventParser (BotAction s ())]
+runBotM :: BotM s a -> BotConfig -> [BotHandlerEventParser s]
 runBotM m = snd . runWriter . runReaderT (_runBotM m)
 
 
@@ -51,3 +52,5 @@ newtype BotAction s a = BotAction { _runBotAction :: ReaderT BotConfig (StateT s
 runBotAction :: BotConfig -> s -> BotAction s a -> IO (a, s)
 runBotAction cfg state = (`runStateT` state) . (`runReaderT` cfg) . _runBotAction
 
+runBotAction_ :: BotConfig -> s -> BotAction s () -> IO s
+runBotAction_ cfg state = (snd <$>) . runBotAction cfg state

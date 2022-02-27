@@ -10,14 +10,15 @@ import Discord.Core.Internal.Types (BotAction, BotM, BotExceptionHandler (BotExc
 import Control.Exception (Handler (Handler))
 import Data.Foldable (asum)
 import Data.Maybe (fromMaybe)
+import Discord.Core.Context (Context (NoCtx))
 
 
-addParser :: BotEventParser (BotAction s ()) -> BotM s ()
+addParser :: BotEventParser (Context, BotAction s ()) -> BotM s ()
 addParser parser = tell [parser]
 
-toHandler :: BotConfig -> s -> BotExceptionHandler s -> Handler s
-toHandler cfg state (BotExceptionHandler h) = Handler $ (snd <$>) . runBotAction cfg state . h
+toHandler :: BotConfig -> s -> Context -> BotExceptionHandler s -> Handler s
+toHandler cfg state ctx (BotExceptionHandler h) = Handler $ (snd <$>) . runBotAction cfg state . h ctx
 
-botAppEventHandler :: BotApp s -> BotEvent -> BotAction s ()
+botAppEventHandler :: BotApp s -> BotEvent -> (Context, BotAction s ())
 botAppEventHandler app event =
-    fromMaybe (pure ()) . ($ event) . runBotEventParser . asum $ runBotM (appHandler app) (appConfig app)
+    fromMaybe (NoCtx, pure ()) . ($ event) . runBotEventParser . asum $ runBotM (appHandler app) (appConfig app)

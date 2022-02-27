@@ -18,23 +18,32 @@ import Discord.Core.Internal.Types (BotApp(appInitialState, appExceptionHandlers
 import Control.Monad.RWS (modify, get)
 import Control.Exception (throw, ArithException (DivideByZero))
 import Control.Monad (void)
+import Discord.Core.Context (Context(CommandCtx))
+import Data.Text (pack)
+import System.Environment (getEnv)
 
 
 newtype CustomAppState = CustomAppState Int deriving (Show, Num)
 
-customConfig :: BotConfig
-customConfig = BotConfig
-    { prefix = "?"
-    , token  = "<your_token>" 
-    }
 
-app :: BotApp CustomAppState
-app = BotApp
-    { appConfig            = customConfig 
+app :: BotConfig -> BotApp CustomAppState
+app cfg = BotApp
+    { appConfig            = cfg 
     , appInitialState      = CustomAppState 0
     , appHandler           = customHandler 
-    , appExceptionHandlers = [ BotExceptionHandler $ \(e :: ArithException) -> liftIO $ print "recovering..." ]
+    , appExceptionHandlers = exceptionHandlers
     }
+
+
+exceptionHandlers = 
+    [ BotExceptionHandler $ \ctx (e :: ArithException) -> do 
+        liftIO $ print "Recovering..."
+        case ctx of
+            CommandCtx name args msg -> do
+                let chid = messageChannelId msg
+                void . sendText chid $ "Something went wrong!"
+            _ -> pure () 
+    ]
     
 
 customEmbed :: Maybe User -> Embed
@@ -63,24 +72,27 @@ customEmbed blame = runEmbedBuilder $ do
 
 customHandler :: BotM CustomAppState ()
 customHandler = do
-    onCommand "embed" $ \(msg, args) -> do
+    onCommand "embed" $ \msg args -> do
         let chid = messageChannelId msg
         let blame = messageAuthor msg
         sendEmbeds chid [ customEmbed blame ]
         liftIO $ print "Embed sent!"
 
-    onCommand "ping" $ \(msg, args) -> do
+    onCommand "ping" $ \msg args -> do
         let chid = messageChannelId msg
         void $ sendText chid "Pong!"
 
-    onCommand "fail" $ \_ -> do
+    onCommand "fail" $ \_ _ -> do
         throw DivideByZero
 
-    onCommand "count" $ \_ -> do
+    onCommand "count" $ \_ _ -> do
         modify (+1)
         s <- get
         liftIO $ print s
 
 
 main :: IO ()
-main = startBot app
+main = do
+    botToken <- getEnv "DISCORD_TOKEN"
+    let cfg = BotConfig { prefix = "?", token  = pack botToken }
+    startBot (app cfg)
