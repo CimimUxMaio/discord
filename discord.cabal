@@ -104,8 +104,14 @@ executable example-exe
 
 test-suite discord-test
   type: exitcode-stdio-1.0
-  main-is: Spec.hs
+  main-is: Main.hs
   other-modules:
+      Core.Embeds.Spec
+      Core.Handlers
+      Core.Internal.Parsers
+      Core.Internal.Spec
+      Core.Spec
+      Utils
       Paths_discord
   hs-source-dirs:
       test
@@ -120,6 +126,7 @@ test-suite discord-test
     , data-default
     , discord
     , extra
+    , hspec
     , http-api-data
     , mtl
     , protolude

@@ -10,4 +10,4 @@ data Context =
     NoCtx                             -- ^ Exception ocurred with no context
     | MessageCtx Message              -- ^ Exception ocurred during 'onMessage'
     | CommandCtx Text [Text] Message  -- ^ Exception ocurred during 'onCommand'
-    deriving Show
+    deriving (Show, Eq)

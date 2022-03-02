@@ -5,7 +5,7 @@ module Discord.Core.Embeds.Builder
 , url
 , thumbnail
 , description
-, fields
+, field
 , image
 , footer
 , color
@@ -14,9 +14,9 @@ module Discord.Core.Embeds.Builder
 , authorIconUrl
 , authorProxyIconUrl
 , footerIconUrl
-, footerProxyUrl ) where
+, footerProxyIconUrl ) where
 
-import Discord.API.Internal.Types.Embed (Embed (..), EmbedAuthor (EmbedAuthor, embedAuthorName, embedAuthorUrl, embedAuthorIconUrl, embedAuthorProxyIconUrl), EmbedThumbnail (EmbedThumbnail, embedThumbnailProxyUrl, embedThumbnailUrl, embedThumbnailHeight, embedThumbnailWidth), EmbedField, EmbedImage (EmbedImage, embedImageUrl, embedImageProxyUrl, embedImageHeight, embedImageWidth), EmbedFooter (EmbedFooter, embedFooterText, embedFooterIconUrl, embedFooterProxyIconUrl), EmbedVideo (EmbedVideo, embedVideoProxyUrl, embedVideoUrl, embedVideoHeight, embedVideoWidth), EmbedProvider (embedProviderName, embedProviderUrl, EmbedProvider), EmbedColor)
+import Discord.API.Internal.Types.Embed (Embed (..), EmbedAuthor (EmbedAuthor, embedAuthorName, embedAuthorUrl, embedAuthorIconUrl, embedAuthorProxyIconUrl), EmbedThumbnail (EmbedThumbnail, embedThumbnailProxyUrl, embedThumbnailUrl, embedThumbnailHeight, embedThumbnailWidth), EmbedField (EmbedField), EmbedImage (EmbedImage, embedImageUrl, embedImageProxyUrl, embedImageHeight, embedImageWidth), EmbedFooter (EmbedFooter, embedFooterText, embedFooterIconUrl, embedFooterProxyIconUrl), EmbedVideo (EmbedVideo, embedVideoProxyUrl, embedVideoUrl, embedVideoHeight, embedVideoWidth), EmbedProvider (embedProviderName, embedProviderUrl, EmbedProvider), EmbedColor)
 import Control.Monad.RWS (MonadState)
 import Control.Monad.State (State, runState, modify)
 import Data.Text (Text)
@@ -79,7 +79,7 @@ title t = modify (\emb -> emb { embedTitle = Just t })
 url 
     :: Text  -- ^ Url
     -> EmbedBuilderM ()
-url u = modify (\emb -> emb { embedTitle = Just u })
+url u = modify (\emb -> emb { embedUrl = Just u })
 
 
 -- | Adds a thumbnail to the 'Embed' being built.
@@ -101,11 +101,15 @@ description
 description desc = modify (\emb -> emb { embedDescription = Just desc })
 
 
--- | Adds embed fields to the 'Embed' being built.
-fields 
-    :: [EmbedField]  -- ^ 'EmbedField' list
+-- | Adds a field to the 'Embed' being built.
+field
+    :: Text  -- ^ Field name
+    -> Text  -- ^ Field value
+    -> Bool  -- ^ Inline?
     -> EmbedBuilderM ()
-fields fs = modify (\emb -> emb { embedFields = fs })
+field name value inline = modify $ appendField newField
+    where newField = EmbedField name value inline
+          appendField field embed = embed { embedFields = embedFields embed ++ [field] } 
 
 
 -- | Adds an image to the 'Embed' being built.
@@ -138,7 +142,7 @@ color c = modify (\emb -> emb { embedColor = Just c })
 
 -- | Adds a timestamp to the 'Embed' being built.
 timestamp 
-    :: UTCTime  -- Timestamp
+    :: UTCTime  -- ^ Timestamp
     -> EmbedBuilderM ()
 timestamp t = modify (\emb -> emb { embedTimestamp = Just t })
 
@@ -264,10 +268,10 @@ footerIconUrl url = modify (\f -> f { embedFooterIconUrl = Just url })
 
 
 -- | Adds an icon proxy to the 'EmbedFooter' being built.
-footerProxyUrl 
+footerProxyIconUrl 
     :: Text  -- ^ Icon proxy url
     -> EmbedFooterBuilderM ()
-footerProxyUrl url = modify (\f -> f { embedFooterProxyIconUrl = Just url })
+footerProxyIconUrl url = modify (\f -> f { embedFooterProxyIconUrl = Just url })
 
 
 

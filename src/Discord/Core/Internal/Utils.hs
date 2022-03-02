@@ -16,9 +16,17 @@ import Discord.Core.Context (Context (NoCtx))
 addParser :: BotEventParser (Context, BotAction s ()) -> BotM s ()
 addParser parser = tell [parser]
 
+
 toHandler :: BotConfig -> s -> Context -> BotExceptionHandler s -> Handler s
-toHandler cfg state ctx (BotExceptionHandler h) = Handler $ (snd <$>) . runBotAction cfg state . h ctx
+toHandler cfg state ctx (BotExceptionHandler h) = Handler action
+    where action = (snd <$>) . runBotAction cfg state . h ctx
+
+
+eventHandler :: BotConfig -> BotM s () -> BotEvent -> (Context, BotAction s ())
+eventHandler cfg m event =
+    fromMaybe default' . ($ event) . runBotEventParser . asum $ runBotM m cfg
+    where default' = (NoCtx, pure ())
+
 
 botAppEventHandler :: BotApp s -> BotEvent -> (Context, BotAction s ())
-botAppEventHandler app event =
-    fromMaybe (NoCtx, pure ()) . ($ event) . runBotEventParser . asum $ runBotM (appHandler app) (appConfig app)
+botAppEventHandler app = eventHandler (appConfig app) (appHandler app)

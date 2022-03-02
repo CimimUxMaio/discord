@@ -60,7 +60,7 @@ data EmbedAuthor = EmbedAuthor
     , embedAuthorUrl          :: Maybe Text  -- url of author
     , embedAuthorIconUrl      :: Maybe Text  -- url of author icon (only supports http(s) and attachments)
     , embedAuthorProxyIconUrl :: Maybe Text  -- a proxied url of author icon
-    } deriving Show
+    } deriving (Show, Eq)
 
 instance FromJSON EmbedAuthor where
     parseJSON = withObject "EmbedAuthor" $ \o ->
@@ -105,7 +105,7 @@ data EmbedField = EmbedField
     { embedFieldName     :: Text  -- name of the field
     , embedFieldValue    :: Text  -- value of the field
     , embedFieldIsInline :: Bool  -- whether or not this field should display inline
-    } deriving Show
+    } deriving (Show, Eq)
 
 instance FromJSON EmbedField where
     parseJSON = withObject "EmbedFiled" $ \o ->
@@ -148,7 +148,7 @@ data EmbedFooter = EmbedFooter
     { embedFooterText         :: Text        -- footer text
     , embedFooterIconUrl      :: Maybe Text  -- url of footer icon (only supports http(s) and attachments)
     , embedFooterProxyIconUrl :: Maybe Text  -- a proxied url of footer icon
-    } deriving Show
+    } deriving (Show, Eq)
 
 instance FromJSON EmbedFooter where
     parseJSON = withObject "EmbedFooter" $ \o ->
@@ -165,7 +165,7 @@ instance ToJSON EmbedFooter where
 
 
 data EmbedColor = EmbedColor Integer Integer Integer
-    deriving Show
+    deriving (Show, Eq)
 
 instance FromJSON EmbedColor where
     parseJSON value = do
