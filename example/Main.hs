@@ -1,4 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE NamedFieldPuns  #-}
 
 module Main where
 
@@ -11,8 +13,9 @@ import Discord.Core.Internal.Types
 import Discord.Core.Bot (startBot)
 import Discord.Core.Handlers (onCommand)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Discord.API.Internal.Types.Message (Message(messageChannelId, messageAuthor))
+import Discord.API.Internal.Types.Message (Message(..))
 import Discord.API.Internal.Types.Embed (Embed)
+import Discord.API.Internal.Types.Guild (Emoji (..))
 import Discord.API.Internal.Http.Channel (sendMessage)
 import Control.Monad.Reader (asks)
 import Discord.Core.Comms (sendText, sendEmbeds)
@@ -25,6 +28,8 @@ import Control.Monad (void)
 import Discord.Core.Context (Context(CommandCtx))
 import Data.Text (pack)
 import System.Environment (getEnv)
+import Data.Maybe (isJust)
+import Discord.Core.Async (waitReaction, ReactionInfo (..))
 
 
 newtype CustomAppState = CustomAppState Int deriving (Show, Num)
@@ -34,7 +39,7 @@ app :: BotConfig -> BotApp CustomAppState
 app cfg = BotApp
     { appConfig            = cfg
     , appInitialState      = CustomAppState 0
-    , appHandler           = customHandler
+    , appDefinition        = customHandler
     , appExceptionHandlers = exceptionHandlers
     }
 
@@ -89,10 +94,21 @@ customHandler = do
     onCommand "fail" $ \_ _ -> do
         throw DivideByZero
 
-    onCommand "count" $ \_ _ -> do
-        modify (+1)
-        s <- get
-        liftIO $ print s
+    onCommand "async" $ \msg _ -> do
+        let chid = messageChannelId msg
+        Message{messageId} <- sendText chid "Hello, please react to this message :D"
+        r <- waitReaction 10_000_000 messageId
+        let response = case r >>= emojiName . riEmoji of
+                Just name -> "Reaction received! Name: " <> name
+                Nothing   -> "You didn't react :C"
+
+        void $ sendText chid response
+
+
+    --onCommand "count" $ \_ _ -> do
+    --    modify (+1)
+    --    s <- get
+    --    liftIO $ print s
 
 
 main :: IO ()

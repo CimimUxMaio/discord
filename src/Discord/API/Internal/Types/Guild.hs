@@ -54,8 +54,8 @@ instance FromJSON Guild where
 
 
 data Emoji = Emoji
-    { emojiId         :: Snowflake          -- emoji id
-    , emojiName       :: Text               -- emoji name
+    { emojiId         :: Maybe Snowflake    -- emoji id
+    , emojiName       :: Maybe Text         -- emoji name
     , emojiRoleIds    :: Maybe [Snowflake]  -- roles allowed to use this emoji
     , emojiCreator    :: Maybe User         -- user that created this emoji
     , emojiIsManaged  :: Maybe Bool         -- whether this emoji is managed
@@ -67,8 +67,8 @@ instance Eq Emoji where
 
 instance FromJSON Emoji where
     parseJSON = withObject "Emoji" $ \o ->
-        Emoji <$> o .:  "id"
-              <*> o .:? "name" .!= ""
+        Emoji <$> o .:? "id"
+              <*> o .:? "name"
               <*> o .:? "roles"
               <*> o .:? "user"
               <*> o .:? "managed"

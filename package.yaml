@@ -40,6 +40,8 @@ dependencies:
 - protolude
 - extra
 - http-api-data
+- stm
+- async
 
 executables:
   example-exe:

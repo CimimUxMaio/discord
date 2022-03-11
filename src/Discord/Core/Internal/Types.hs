@@ -1,22 +1,44 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Discord.Core.Internal.Types where
 
-import Control.Monad.Writer (Writer, MonadWriter (tell, writer), runWriter, WriterT)
-import Control.Monad.Reader (ReaderT (runReaderT), ask, MonadTrans (lift), MonadIO (liftIO), Reader, MonadReader (reader), runReader)
-import Data.Text (Text)
-import qualified Data.Text as Text
-import Discord.API.Internal.Types.BotEvent (BotEvent)
-import Control.Applicative (Alternative)
-import GHC.Base (Alternative(empty, (<|>)))
-import Data.Foldable (asum)
-import Data.Maybe (fromMaybe)
-import Control.Monad.Trans.State (StateT (runStateT))
-import Control.Monad.RWS (MonadState)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.RWS.Class (MonadReader)
+import Control.Monad.Reader (ReaderT (runReaderT), asks)
+import Control.Concurrent.STM (TVar, modifyTVar, atomically, readTVarIO, TMVar)
+import Control.Monad (void)
 import Control.Exception (Exception)
-import Discord.Core.Internal.Parsers (BotEventParser)
 import Discord.Core.Context (Context)
+import Data.Text (Text)
+import Discord.API.Internal.Types.BotEvent (BotEvent)
+import Control.Applicative (Alternative (empty, (<|>)))
+import Control.Monad.Writer (Writer, MonadWriter)
+import Control.Concurrent (ThreadId)
+
+
+
+newtype BotEventParser a = BotEventParser
+    { runBotEventParser :: BotEvent -> Maybe a }
+    deriving Functor
+
+instance Applicative BotEventParser where
+    pure x = BotEventParser (pure . pure $ x)
+    BotEventParser f <*> BotEventParser x = BotEventParser $ \e -> f e <*> x e
+
+instance Alternative BotEventParser where
+    empty = BotEventParser $ const Nothing
+    BotEventParser f <|> BotEventParser g = BotEventParser $ \e -> f e <|> g e
+
+instance Monad BotEventParser where
+    return = pure
+    BotEventParser x >>= f = BotEventParser $ \e -> x e >>= flip runBotEventParser e . f
+
+instance MonadFail BotEventParser where
+    fail _ = empty
+
+
+
 
 -- | Defines how to handle a given exception given the context in which it was thrown.
 {-
@@ -54,61 +76,11 @@ data BotConfig = BotConfig
 
 
 -- | Bot application definition.
-{-
-__Example:__
-
-newtype CustomAppState = CustomAppState Int deriving (Show, Num)
-
-
-app :: BotConfig -> BotApp CustomAppState
-app cfg = BotApp
-    { appConfig            = cfg 
-    , appInitialState      = CustomAppState 0
-    , appHandler           = customHandler 
-    , appExceptionHandlers = exceptionHandlers
-    }
-
-
-exceptionHandlers :: [BotExceptionHandler s]
-exceptionHandlers = 
-    [ BotExceptionHandler $ \ctx (e :: ArithException) -> do 
-        liftIO $ print "Recovering..."
-        case ctx of
-            CommandCtx name args msg -> do
-                let chid = messageChannelId msg
-                void . sendText chid $ "Something went wrong!"
-            _ -> pure () 
-    ]
-    
-
-customEmbed :: Maybe User -> Embed
-customEmbed blame = runEmbedBuilder $ do 
-    title "A nice title"
-    description "a nicer embed description"
-    color tomato
-
-
-customHandler :: BotM CustomAppState ()
-customHandler = do
-    onCommand "ping" $ \msg args -> do
-        let chid = messageChannelId msg
-        void $ sendText chid "Pong!"
-
-    onCommand "fail" $ \_ _ -> do
-        throw DivideByZero
-
-
-main :: IO ()
-main = do
-    botToken <- getEnv "DISCORD_TOKEN"
-    let cfg = BotConfig { prefix = "?", token  = pack botToken }
-    startBot (app cfg)
--}
 data BotApp s = BotApp
     { appConfig            :: BotConfig                -- ^ Configuration
     , appInitialState      :: s                        -- ^ Initial state
     , appExceptionHandlers :: [BotExceptionHandler s]  -- ^ How to handle exceptions
-    , appHandler           :: BotM s ()                -- ^ Main application definition
+    , appDefinition        :: BotM s ()                -- ^ Main application definition
     }
 
 
@@ -119,17 +91,24 @@ type BotHandlerEventParser s = BotEventParser (Context, BotAction s ())
 newtype BotM s a = BotM { _runBotM :: ReaderT BotConfig (Writer [BotHandlerEventParser s]) a }
     deriving (Functor, Applicative, Monad, MonadReader BotConfig, MonadWriter [BotHandlerEventParser s])
 
-runBotM :: BotM s a -> BotConfig -> [BotHandlerEventParser s]
-runBotM m = snd . runWriter . runReaderT (_runBotM m)
+
+
+data WaitingTask = WaitingTask
+    { wtMatches   :: BotEvent -> Bool 
+    , wtContainer :: TMVar (Maybe BotEvent)
+    , wtThreadId  :: ThreadId
+    }
+
+
+-- | Environment in which a BotAction is running.
+data BotEnv s = BotEnv
+    { envConfig        :: BotConfig  -- ^ the 'BotConfig' being used
+    , envState         :: TVar s     -- ^ the application's state
+    , _envWaitingTasks :: TVar [WaitingTask]
+    }
 
 
 -- | Used for defining actions to be executed when handling events.
 -- See example at 'BotApp'.
-newtype BotAction s a = BotAction { _runBotAction :: ReaderT BotConfig (StateT s IO) a }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader BotConfig, MonadState s)
-
-runBotAction :: BotConfig -> s -> BotAction s a -> IO (a, s)
-runBotAction cfg state = (`runStateT` state) . (`runReaderT` cfg) . _runBotAction
-
-runBotAction_ :: BotConfig -> s -> BotAction s () -> IO s
-runBotAction_ cfg state = (snd <$>) . runBotAction cfg state
+newtype BotAction s a = BotAction { _runBotAction :: ReaderT (BotEnv s) IO a }
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (BotEnv s))

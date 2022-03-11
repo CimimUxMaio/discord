@@ -38,13 +38,16 @@ library
       Discord.API.Internal.Types.Guild
       Discord.API.Internal.Types.Message
       Discord.API.Internal.Types.User
+      Discord.Core.Async
       Discord.Core.Bot
       Discord.Core.Comms
       Discord.Core.Context
       Discord.Core.Embeds.Builder
       Discord.Core.Embeds.Colors
       Discord.Core.Handlers
-      Discord.Core.Internal.EventLoop
+      Discord.Core.Internal.BotAction
+      Discord.Core.Internal.BotM
+      Discord.Core.Internal.EventDistributor
       Discord.Core.Internal.Parsers
       Discord.Core.Internal.Types
       Discord.Core.Internal.Utils
@@ -58,6 +61,7 @@ library
       GeneralizedNewtypeDeriving
   build-depends:
       aeson
+    , async
     , base >=4.7 && <5
     , data-default
     , extra
@@ -66,6 +70,7 @@ library
     , protolude
     , req
     , scientific
+    , stm
     , text
     , time
     , transformers
@@ -86,6 +91,7 @@ executable example-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
+    , async
     , base >=4.7 && <5
     , data-default
     , discord
@@ -95,6 +101,7 @@ executable example-exe
     , protolude
     , req
     , scientific
+    , stm
     , text
     , time
     , transformers
@@ -122,6 +129,7 @@ test-suite discord-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
+    , async
     , base >=4.7 && <5
     , data-default
     , discord
@@ -132,6 +140,7 @@ test-suite discord-test
     , protolude
     , req
     , scientific
+    , stm
     , text
     , time
     , transformers

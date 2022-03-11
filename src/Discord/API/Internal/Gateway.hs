@@ -23,7 +23,6 @@ import Discord.API.Internal.Types.BotEvent (BotEvent(Ready, Resumed))
 import Data.Time (UTCTime, getCurrentTime, diffUTCTime)
 import Protolude (print, Chan, writeChan, when, finally, SomeException (SomeException), isLeft)
 import Prelude hiding (print)
-import Discord.Core.Internal.Types (BotConfig(token))
 import Control.Monad.Extra (whenJust)
 import Control.Exception (try)
 

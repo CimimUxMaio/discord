@@ -4,7 +4,7 @@ module Discord.Core.Comms
 , sendEmbeds
 , sendStickers ) where
 
-import Discord.Core.Internal.Types (BotConfig (token), BotAction)
+import Discord.Core.Internal.Types (BotConfig (token), BotAction, BotEnv (envConfig))
 import Data.Text (Text)
 import Control.Monad.RWS (asks, MonadIO (liftIO))
 import Discord.API.Internal.Http.Channel (sendMessage)
@@ -15,7 +15,7 @@ import Discord.API.Internal.Types.Embed (Embed)
 
 
 liftWithToken :: (Text -> IO a) -> BotAction s a
-liftWithToken f = asks token >>= (liftIO . f)
+liftWithToken f = asks (token . envConfig) >>= (liftIO . f)
 
 
 -- | Sends a sendable value to the given channel id.

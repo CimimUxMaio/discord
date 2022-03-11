@@ -2,32 +2,13 @@
 {-# LANGUAGE LambdaCase #-}
 
 module Discord.Core.Internal.Parsers where
-import Control.Applicative (Alternative (empty, (<|>)))
+
 import Discord.API.Internal.Types.BotEvent (BotEvent (MessageCreate))
 import Discord.API.Internal.Types.Message (Message (messageText))
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Discord.Core.Context (Context (MessageCtx, CommandCtx))
-
-
-newtype BotEventParser a = BotEventParser
-    { runBotEventParser :: BotEvent -> Maybe a }
-    deriving Functor
-
-instance Applicative BotEventParser where
-    pure x = BotEventParser (pure . pure $ x)
-    BotEventParser f <*> BotEventParser x = BotEventParser $ \e -> f e <*> x e
-
-instance Alternative BotEventParser where
-    empty = BotEventParser $ const Nothing
-    BotEventParser f <|> BotEventParser g = BotEventParser $ \e -> f e <|> g e
-
-instance Monad BotEventParser where
-    return = pure
-    BotEventParser x >>= f = BotEventParser $ \e -> x e >>= flip runBotEventParser e . f
-
-instance MonadFail BotEventParser where
-    fail _ = empty
+import Discord.Core.Internal.Types (BotEventParser (BotEventParser))
 
 
 

@@ -7,9 +7,9 @@ import Data.Text (Text)
 import Discord.Core.Internal.Utils (addParser)
 import Control.Monad.Reader (MonadReader (reader))
 import Discord.API.Internal.Types.Message (Message)
-import Discord.Core.Internal.Parsers
-    ( BotEventParser, messageCreateParser, commandParser )
 import Discord.Core.Context (Context (CommandCtx, MessageCtx))
+import Discord.Core.Internal.Parsers
+    ( commandParser, messageCreateParser )
 
 
 -- | Used for defining how to handle "MessageCreate" events.
