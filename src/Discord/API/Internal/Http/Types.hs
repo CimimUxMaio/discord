@@ -1,9 +1,8 @@
-{-# LANGUAGE RecordWildCards #-}
 module Discord.API.Internal.Http.Types where
 import Data.Text (Text)
 import Discord.API.Internal.Types.Embed (Embed)
 import Discord.API.Internal.Types.Common (Snowflake)
-import Data.Aeson (ToJSON (toJSON), object, (.=))
+import Data.Aeson ( ToJSON(toJSON), object, KeyValue((.=)) )
 
 
 data SendableMessage = SendableText     Text

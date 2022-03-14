@@ -16,6 +16,10 @@ import Data.Functor ((<&>))
 import Data.Text (Text)
 
 
+sleep :: Int -> BotAction s ()
+sleep = liftIO . threadDelay
+
+
 waitFor :: (BotEvent -> Maybe a) -> (a -> Bool) -> Int -> BotAction s (Maybe a)
 waitFor parser condition timeout = do
     container <- liftIO newEmptyTMVarIO

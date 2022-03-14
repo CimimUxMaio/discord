@@ -42,7 +42,6 @@ eventDistributor eventQueue app@BotApp{..} = do
 eventLoop :: Chan BotEvent -> BotApp s -> BotEnv s -> IO ()
 eventLoop eventQueue app env@BotEnv{_envWaitingTasks} = forever $ do
     event <- readChan eventQueue
-
     waitingTasks <- readTVarIO _envWaitingTasks
 
     case find (`wtMatches` event) waitingTasks of

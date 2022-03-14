@@ -1,6 +1,6 @@
 module Core.Handlers where
 import Test.Hspec (describe, it, context, shouldBe, shouldReturn, shouldNotBe, before, before_)
-import Discord.Core.Internal.Types (BotConfig(BotConfig, prefix), BotEnv (..))
+import Discord.Core.Internal.Types (BotConfig(BotConfig, prefix), BotEnv (..), BotApp (BotApp, appConfig, appDefinition, appExceptionHandlers))
 import Discord.Core.Handlers (onCommand, onMessage)
 import Control.Monad.RWS (modify, MonadIO (liftIO))
 import Discord.Core.Internal.BotM ( runBotM, eventHandler )

@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module Discord.API.Internal.Types.Guild where
 
 import Discord.API.Internal.Types.Common ( ImageHash, Snowflake(..) )
@@ -56,11 +57,11 @@ instance FromJSON Guild where
 data Emoji = Emoji
     { emojiId         :: Maybe Snowflake    -- emoji id
     , emojiName       :: Maybe Text         -- emoji name
-    , emojiRoleIds    :: Maybe [Snowflake]  -- roles allowed to use this emoji
+    , emojiRoleIds    :: [Snowflake]        -- roles allowed to use this emoji
     , emojiCreator    :: Maybe User         -- user that created this emoji
-    , emojiIsManaged  :: Maybe Bool         -- whether this emoji is managed
-    , emojiIsAnimated :: Maybe Bool         -- whether this emoji is animated
-    } deriving (Show)
+    , emojiIsManaged  :: Bool               -- whether this emoji is managed
+    , emojiIsAnimated :: Bool               -- whether this emoji is animated
+    } deriving Show
 
 instance Eq Emoji where
     (==) = (==) `on` emojiId
@@ -69,10 +70,15 @@ instance FromJSON Emoji where
     parseJSON = withObject "Emoji" $ \o ->
         Emoji <$> o .:? "id"
               <*> o .:? "name"
-              <*> o .:? "roles"
+              <*> o .:? "roles" .!= []
               <*> o .:? "user"
-              <*> o .:? "managed"
-              <*> o .:? "animated"
+              <*> o .:? "managed"  .!= False
+              <*> o .:? "animated" .!= False
+
+instance ToJSON Emoji where
+    toJSON Emoji{..} = object [ "id"   .= emojiId
+                              , "name" .= emojiName 
+                              ]
 
 
 data Sticker = Sticker

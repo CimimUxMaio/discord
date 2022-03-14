@@ -42,6 +42,7 @@ dependencies:
 - http-api-data
 - stm
 - async
+- bytestring
 
 executables:
   example-exe:

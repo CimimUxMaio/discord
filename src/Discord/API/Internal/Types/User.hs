@@ -45,3 +45,10 @@ instance FromJSON User where
                 disc       <- o .: "discriminator" :: Parser Text
                 avatarHash <- o .:? "avatar"       :: Parser (Maybe Text)
                 pure (maybe (cdnUserDefaultAvatarUrl disc) (cdnUserAvatarUrl uid) avatarHash)
+
+
+instance ToJSON User where 
+    toJSON User{..}= object [ "id"            .= userId
+                            , "username"      .= userName
+                            , "discriminator" .= userDiscriminator 
+                            ]        

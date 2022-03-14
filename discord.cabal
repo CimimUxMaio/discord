@@ -30,6 +30,7 @@ library
       Discord.API.Internal.Http.Channel
       Discord.API.Internal.Http.Common
       Discord.API.Internal.Http.Types
+      Discord.API.Internal.ToMsgFormat
       Discord.API.Internal.Types.BotEvent
       Discord.API.Internal.Types.Channel
       Discord.API.Internal.Types.Common
@@ -44,6 +45,7 @@ library
       Discord.Core.Context
       Discord.Core.Embeds.Builder
       Discord.Core.Embeds.Colors
+      Discord.Core.Emojis
       Discord.Core.Handlers
       Discord.Core.Internal.BotAction
       Discord.Core.Internal.BotM
@@ -63,6 +65,7 @@ library
       aeson
     , async
     , base >=4.7 && <5
+    , bytestring
     , data-default
     , extra
     , http-api-data
@@ -93,6 +96,7 @@ executable example-exe
       aeson
     , async
     , base >=4.7 && <5
+    , bytestring
     , data-default
     , discord
     , extra
@@ -131,6 +135,7 @@ test-suite discord-test
       aeson
     , async
     , base >=4.7 && <5
+    , bytestring
     , data-default
     , discord
     , extra

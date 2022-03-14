@@ -9,16 +9,16 @@ import Discord.Core.Internal.Types
       BotApp(..),
       BotM,
       BotApp(appInitialState, appExceptionHandlers),
-      BotExceptionHandler(BotExceptionHandler) )
+      BotExceptionHandler(BotExceptionHandler), BotEnv (envConfig) )
 import Discord.Core.Bot (startBot)
 import Discord.Core.Handlers (onCommand)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Discord.API.Internal.Types.Message (Message(..))
+import Discord.API.Internal.Types.Message (Message(..), Reaction (reactionEmoji))
 import Discord.API.Internal.Types.Embed (Embed)
 import Discord.API.Internal.Types.Guild (Emoji (..))
-import Discord.API.Internal.Http.Channel (sendMessage)
+import Discord.API.Internal.Http.Channel (sendMessage, getMessage)
 import Control.Monad.Reader (asks)
-import Discord.Core.Comms (sendText, sendEmbeds)
+import Discord.Core.Comms (sendText, sendEmbeds, addReaction)
 import Discord.Core.Embeds.Builder (runEmbedBuilder, description, title, thumbnail, author, authorIconUrl, authorUrl, footer, footerIconUrl, image, color, field)
 import Discord.API.Internal.Types.User (User(userId, userName, userAvatarUrl))
 import Discord.Core.Embeds.Colors (cyan, cornflowerblue, tomato)
@@ -26,10 +26,11 @@ import Control.Monad.RWS (modify, get)
 import Control.Exception (throw, ArithException (DivideByZero))
 import Control.Monad (void)
 import Discord.Core.Context (Context(CommandCtx))
-import Data.Text (pack)
+import Data.Text (pack, intercalate)
 import System.Environment (getEnv)
-import Data.Maybe (isJust)
-import Discord.Core.Async (waitReaction, ReactionInfo (..))
+import Data.Maybe (isJust, fromMaybe)
+import Discord.Core.Async (waitReaction, ReactionInfo (..), sleep)
+import Discord.Core.Emojis (grin, eyes)
 
 
 newtype CustomAppState = CustomAppState Int deriving (Show, Num)
@@ -96,13 +97,11 @@ customHandler = do
 
     onCommand "async" $ \msg _ -> do
         let chid = messageChannelId msg
-        Message{messageId} <- sendText chid "Hello, please react to this message :D"
-        r <- waitReaction 10_000_000 messageId
-        let response = case r >>= emojiName . riEmoji of
-                Just name -> "Reaction received! Name: " <> name
-                Nothing   -> "You didn't react :C"
-
-        void $ sendText chid response
+        myMsg@Message{messageId} <- sendText chid "Hello, please react to this message :D"
+        ri <- waitReaction 10_000_000 messageId
+        case riEmoji <$> ri of
+            Just emoji -> liftIO (print emoji) >> addReaction myMsg eyes
+            Nothing    -> void $ sendText chid "You didn't react :C"
 
 
     --onCommand "count" $ \_ _ -> do

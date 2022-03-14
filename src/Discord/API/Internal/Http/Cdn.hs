@@ -1,7 +1,9 @@
 module Discord.API.Internal.Http.Cdn where
 import Data.Text (Text, pack, unpack)
-import Discord.API.Internal.Http.Common ((/+))
 
+
+(/+) :: Text -> Text -> Text
+(/+) a b = a <> b
 
 cdnBaseUrl :: Text
 cdnBaseUrl = "https://cdn.discordapp.com"
